@@ -31,7 +31,7 @@ typedef enum {
 #define pop_bit(bitboard, square) ((bitboard) &= ~(1ULL << (square)))
 
 /* Pieces */
-typedef enum { P, N, B, R, Q, K, p, n, b, r, q, k, E } Piece;
+typedef enum { lP, lN, lB, lR, lQ, lK, dP, dN, dB, dR, dQ, dK, E } Piece;
 typedef enum { PAWN, KNIGHT, BISHOP, ROOK, QUEEN, KING } PieceType;
 typedef enum { LIGHT, DARK, BOTH } PieceColor;
 
