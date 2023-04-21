@@ -1,8 +1,8 @@
 # NOTES
 
-Piece images can be found at this link alongside its licenses.
+Lichess piece images can be found at this link alongside its licenses.
 
-|  ITEMS   |           LINKS                                              |
-|==========|==============================================================|
-|  IMAGES  | https://github.com/lichess-org/lila/tree/master/public/piece |
-| LICENSES |  https://github.com/lichess-org/lila/blob/master/COPYING.md  |
+|  ITEMS   |                           LINKS                              |
+|:--------:|:------------------------------------------------------------:|
+|  Images  | https://github.com/lichess-org/lila/tree/master/public/piece |
+| Licenses |  https://github.com/lichess-org/lila/blob/master/COPYING.md  |
