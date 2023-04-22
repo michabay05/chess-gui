@@ -14,10 +14,10 @@ make run
   - [x] Draw grid
   - [x] Color each grid by exchanging the light and dark colors
 - [ ] Piece
-  - [ ] Find pieces online
+  - [x] Find pieces online
   - [ ] Draw them centered in each square
 
 ### Parsing
-- [ ] FEN
+- [x] FEN
 - [ ] PGN
 - [ ] UCI
