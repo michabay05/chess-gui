@@ -37,4 +37,4 @@ clean:
 run:
 	clear
 	$(MAKE) all
-	$(BIN)
+	$(BIN) $(MODE)

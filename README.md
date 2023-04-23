@@ -13,9 +13,12 @@ make run
 - [x] Board
   - [x] Draw grid
   - [x] Color each grid by exchanging the light and dark colors
-- [ ] Piece
+- [x] Piece
   - [x] Find pieces online
-  - [ ] Draw them centered in each square
+  - [x] Draw them centered in each square
+- [ ] Controls
+  - [ ] Drag piece to new square
+  - [ ] Click and press piece to new square
 
 ### Parsing
 - [x] FEN

@@ -12,3 +12,4 @@ typedef struct {
 } FENInfo;
 
 FENInfo parse_fen(char *fen);
+void fen_info_print(FENInfo *fen);

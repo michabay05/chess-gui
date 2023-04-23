@@ -4,6 +4,11 @@ FENInfo parse_fen(char *fen) {
   FENInfo info = {0};
   // Piece placements
   int ind = 0;
+
+  // Set every square to be empty before setting values
+  for (int i = 0; i < 64; i++)
+    info.board[i] = E;
+
   while (fen && *fen != ' ') {
     if (*fen == '/') {
       fen++;
@@ -83,11 +88,15 @@ FENInfo parse_fen(char *fen) {
   // Account for space and place on next char
   fen++;
 
-  int file = (*fen - 'a' - 1);
-  fen++;
-  int rank = *fen - '0';
-  info.enpassant = SQ(rank, file);
-  fen++;
+  if (*fen != '-') {
+    int file = 8 - (*fen - 'a');
+    fen++;
+    int rank = *fen - '0';
+    info.enpassant = SQ(rank, file);
+    fen++;
+  } else {
+    fen++;
+  }
 
   // Account for space and place on next char
   fen++;
