@@ -1,5 +1,5 @@
 # Chess GUI
-A graphical interface for chess engines written in C, similar to (Arena Chess GUI)[http://www.playwitharena.de/]
+A graphical interface for chess engines written in C, similar to [Arena Chess GUI](http://www.playwitharena.de/)
 
 **UNFINISHED** Look at ROADMAP.md for progress.
 
