@@ -1,5 +1,7 @@
 #pragma once
 
+#include "raylib.h"
+
 #define SCREEN_WIDTH 1000
 #define SCREEN_HEIGHT 600
 
@@ -9,6 +11,8 @@
 #define DARK_CLR (Color) { 181, 136,  99, 255 }
 
 #define SQ_SIZE 70
+
+extern const float padding[2];
 
 // Prototypes
 int gui_main(void);

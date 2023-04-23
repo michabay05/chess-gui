@@ -1,6 +1,8 @@
-#include "defs.h"
 #include "fen.h"
 #include "gui_defs.h"
+#include "precalculate.h"
+#include "bitboard.h"
+#include "move.h"
 
 #include <string.h>
 
@@ -22,8 +24,8 @@ Mode parse_cmd_args(int argc, char **argv) {
 }
 
 int test_main(void) {
-  FENInfo fen = parse_fen("rnbqkbnr/pp1ppppp/8/2p5/4P3/8/PPPP1PPP/RNBQKBNR w KQkq c6 0 2");
-  fen_info_print(&fen);
+  attack_init();
+  magics_init();
   return 0;
 }
 

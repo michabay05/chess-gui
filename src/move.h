@@ -16,7 +16,6 @@ bool move_is_two_square_push(const int move);
 bool move_is_enpassant(const int move);
 bool move_is_castling(const int move);
 
-void sq_to_str(Sq sq, char *str);
 void move_to_str(int move, char* move_str);
 int move_parse(char *move_str, Piece piece, bool isCapture,
                bool isTwoSquarePush, bool isEnpassant, bool isCastling);

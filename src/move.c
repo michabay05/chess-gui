@@ -57,16 +57,14 @@ bool move_is_two_square_push(const Move move) { return move & 0x200000; }
 bool move_is_enpassant(const Move move) { return move & 0x400000; }
 bool move_is_castling(const Move move) { return move & 0x800000; }
 
-void sq_to_str(Sq sq, char *str) {
-  str[0] = COL(sq) + 'a';
-  str[1] = (8 - ROW(sq)) + '0';
-}
-
 void move_to_str(const Move move, char* move_str) {
   // Source square
-  sq_to_str(move_get_source(move), move_str);
+  move_str[0] = str_coords[move_get_source(move)][0];
+  move_str[1] = str_coords[move_get_source(move)][1];
   // Target square
-  sq_to_str(move_get_target(move), move_str + 2);
+  move_str[2] = str_coords[move_get_target(move)][2];
+  move_str[3] = str_coords[move_get_target(move)][3];
+  // Promotion piece
   move_str[4] = move_promoted_char(move);
 }
 

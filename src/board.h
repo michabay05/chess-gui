@@ -23,7 +23,7 @@ typedef struct {
 
 void pos_add_piece(Position* pos, Piece piece, Sq sq);
 void pos_remove_piece(Position* pos, Piece piece, Sq sq);
-Piece pos_get_piece(Position* pos, Sq sq);
+Piece pos_get_piece(const Position pos, Sq sq);
 void pos_update_units(Position* pos);
 void change_side(State* state);
 void board_set_from_fen(Board* board, FENInfo fen);
