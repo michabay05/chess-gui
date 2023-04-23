@@ -24,9 +24,7 @@
     - [x] Knight
     - [x] King
   - [x] Sliding pieces
-		- [x] Magic bitboards
-			- [x] Finding magic numbers
-			- [x] Hard coding those magic constants
+    - [x] Magic bitboards
     - [x] Bishop
     - [x] Rook
     - [x] Queen(combination of rook and bishop)
