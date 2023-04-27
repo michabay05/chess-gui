@@ -27,3 +27,4 @@ Piece pos_get_piece(const Position pos, Sq sq);
 void pos_update_units(Position* pos);
 void change_side(State* state);
 void board_set_from_fen(Board* board, FENInfo fen);
+void board_print(const Board* const b);

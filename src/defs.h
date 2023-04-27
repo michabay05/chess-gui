@@ -20,6 +20,7 @@ typedef enum {
 // clang-format on
 
 extern const char* str_coords[65];
+extern const char piece_char[13];
 
 #define ROW(sq) (((int)sq) >> 3)
 #define COL(sq) (((int)sq) & 7)
