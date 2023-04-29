@@ -1,6 +1,12 @@
 #pragma once
 
 #include "defs.h"
+#include "board.h"
+
+typedef enum {
+    AllMoves,
+    CapturesOnly,
+} MoveType;
 
 typedef int32_t Move;
 
@@ -19,3 +25,4 @@ bool move_is_castling(const int move);
 void move_to_str(int move, char* move_str);
 int move_parse(char *move_str, Piece piece, bool isCapture,
                bool isTwoSquarePush, bool isEnpassant, bool isCastling);
+bool move_make(Board *main, Move move, MoveType move_flag);

@@ -1,4 +1,5 @@
 #include "board.h"
+#include "bitboard.h"
 #include "defs.h"
 #include "precalculate.h"
 #include <string.h>
@@ -13,6 +14,11 @@ const char *str_coords[65] = {
 
 const char piece_char[13] = {'P', 'N', 'B', 'R', 'Q', 'K', 'p',
                              'n', 'b', 'r', 'q', 'k', ' '};
+
+const int castling_rights[64] = {
+    7,  15, 15, 15, 3,  15, 15, 11, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15,
+    15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15,
+    15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 13, 15, 15, 15, 12, 15, 15, 14};
 
 void pos_add_piece(Position *pos, Piece piece, Sq sq) {
   set_bit(pos->piece[piece], sq);
@@ -43,7 +49,7 @@ void pos_update_units(Position *pos) {
   pos->units[BOTH] = pos->units[LIGHT] | pos->units[DARK];
 }
 
-void change_side(State *state) { state->side = !state->side; }
+void state_change_side(State *state) { state->side = !state->side; }
 
 void board_set_from_fen(Board *board, FENInfo fen) {
   *board = (Board){0};
@@ -84,8 +90,8 @@ void board_print(const Board *const b) {
   }
   printf("      a   b   c   d   e   f   g   h\n\n");
   printf("        Side: %s\n", !b->state.side ? "white" : "black");
-  printf("    Castling: ");
-  print_castling(b->state.castling);
+  // printf("    Castling: ");
+  // print_castling(b->state.castling);
   printf("       Moves: %d\n", b->state.full_moves);
 }
 
@@ -123,4 +129,9 @@ bool board_is_sq_attacked(const Board *const b, Sq sq, PieceColor side) {
 
   // If all of the above cases fail, return false
   return false;
+}
+
+bool board_is_in_check(const Board* const b) {
+    Piece king = !b->state.side ? dK : lK;
+    return board_is_sq_attacked(b, bb_lsb_index(b->pos.piece[king]), b->state.side);
 }
