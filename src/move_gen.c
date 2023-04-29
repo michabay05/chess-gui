@@ -159,9 +159,6 @@ static void movelist_gen_bishop(MoveList *ml, const Board *const b) {
         get_bishop_attack(source, b->pos.units[BOTH]) &
         (b->state.side == LIGHT ? ~b->pos.units[LIGHT] : ~b->pos.units[DARK]);
 
-    bb_print(get_bishop_attack(source, b->pos.units[BOTH]));
-    bb_print(~b->pos.units[DARK]);
-
     while (attack_copy) {
       target = bb_lsb_index(attack_copy);
       if (get_bit(b->pos.units[b->state.side == LIGHT ? DARK : LIGHT], target))
@@ -222,7 +219,8 @@ static void movelist_gen_white_castling(MoveList *ml, const Board *const b) {
     // Check if path is obstructed
     if (!get_bit(b->pos.units[BOTH], f1) && !get_bit(b->pos.units[BOTH], g1)) {
       // Is e1 or f1 attacked by a black piece?
-      if (!board_is_sq_attacked(b, e1, DARK) && !board_is_sq_attacked(b, f1, DARK))
+      if (!board_is_sq_attacked(b, e1, DARK) &&
+          !board_is_sq_attacked(b, f1, DARK))
         movelist_add(ml, move_encode(e1, g1, lK, E, 0, 0, 0, 1));
     }
   }
@@ -232,7 +230,8 @@ static void movelist_gen_white_castling(MoveList *ml, const Board *const b) {
     if (!get_bit(b->pos.units[BOTH], b1) && !get_bit(b->pos.units[BOTH], c1) &&
         !get_bit(b->pos.units[BOTH], d1)) {
       // Is d1 or e1 attacked by a black piece?
-      if (!board_is_sq_attacked(b, d1, DARK) && !board_is_sq_attacked(b, e1, DARK))
+      if (!board_is_sq_attacked(b, d1, DARK) &&
+          !board_is_sq_attacked(b, e1, DARK))
         movelist_add(ml, move_encode(e1, c1, lK, E, 0, 0, 0, 1));
     }
   }
@@ -244,7 +243,8 @@ static void movelist_gen_black_castling(MoveList *ml, const Board *const b) {
     // Check if path is obstructed
     if (!get_bit(b->pos.units[BOTH], f8) && !get_bit(b->pos.units[BOTH], g8)) {
       // Is e8 or f8 attacked by a white piece?
-      if (!board_is_sq_attacked(b, e8, LIGHT) && !board_is_sq_attacked(b, f8, LIGHT))
+      if (!board_is_sq_attacked(b, e8, LIGHT) &&
+          !board_is_sq_attacked(b, f8, LIGHT))
         movelist_add(ml, move_encode(e8, g8, dK, E, 0, 0, 0, 1));
     }
   }
@@ -254,7 +254,8 @@ static void movelist_gen_black_castling(MoveList *ml, const Board *const b) {
     if (!get_bit(b->pos.units[BOTH], b8) && !get_bit(b->pos.units[BOTH], c8) &&
         !get_bit(b->pos.units[BOTH], d8)) {
       // Is d8 or e8 attacked by a white piece?
-      if (!board_is_sq_attacked(b, d8, LIGHT) && !board_is_sq_attacked(b, e8, LIGHT))
+      if (!board_is_sq_attacked(b, d8, LIGHT) &&
+          !board_is_sq_attacked(b, e8, LIGHT))
         movelist_add(ml, move_encode(e8, c8, dK, E, 0, 0, 0, 1));
     }
   }
@@ -294,7 +295,30 @@ static void movelist_gen_king(MoveList *ml, const Board *const b) {
     movelist_gen_black_castling(ml, b);
 }
 
-void movelist_generate(MoveList *ml, const Board *const b) {
+void movelist_generate(MoveList *ml, const Board *const b, Piece p) {
+  switch (COLORLESS(p)) {
+  case PAWN:
+    movelist_gen_pawn(ml, b);
+    break;
+  case KNIGHT:
+    movelist_gen_knight(ml, b);
+    break;
+  case BISHOP:
+    movelist_gen_bishop(ml, b);
+    break;
+  case ROOK:
+    movelist_gen_rook(ml, b);
+    break;
+  case QUEEN:
+    movelist_gen_queen(ml, b);
+    break;
+  case KING:
+    movelist_gen_king(ml, b);
+    break;
+  }
+}
+
+void movelist_generate_all(MoveList *ml, const Board *const b) {
   movelist_gen_pawn(ml, b);
   movelist_gen_knight(ml, b);
   movelist_gen_bishop(ml, b);

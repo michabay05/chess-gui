@@ -9,10 +9,10 @@ Move move_encode(Sq source, Sq target, Piece piece, Piece promoted,
          (isCastling << 23);
 }
 
-int move_get_source(const Move move) { return move & 0x3F; }
-int move_get_target(const Move move) { return (move & 0xFC0) >> 6; }
-int move_get_piece(const Move move) { return (move & 0xF000) >> 12; }
-int move_get_promoted(const Move move) {
+Sq move_get_source(const Move move) { return move & 0x3F; }
+Sq move_get_target(const Move move) { return (move & 0xFC0) >> 6; }
+Piece move_get_piece(const Move move) { return (move & 0xF000) >> 12; }
+Piece move_get_promoted(const Move move) {
   int promoted = (move & 0xF0000) >> 16;
   return promoted ? promoted : E;
 }

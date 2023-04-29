@@ -2,7 +2,6 @@
 #include "fen.h"
 #include "gui_board.h"
 #include "gui_defs.h"
-#include <raylib.h>
 
 const float padding[2] = {
     (SCREEN_WIDTH - (8 * SQ_SIZE)) / 2.0f,
@@ -53,8 +52,7 @@ int gui_main(void) {
   SetTargetFPS(30);
 
   Texture2D tex = LoadTexture("assets/neo-pieces-spritesheet.png");
-  FENInfo fen = parse_fen(
-      "rnbqkbnr/pp1ppppp/8/2p5/4P3/5N2/PPPP1PPP/RNBQKB1R w kq - 10 20");
+  FENInfo fen = parse_fen("6R1/P2k4/r7/5N1P/r7/p7/7K/8 w - - 0 1");
   GUI_Board gb;
   gui_board_init(&gb);
   board_set_from_fen(&gb.board, fen);

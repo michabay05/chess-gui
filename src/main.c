@@ -1,17 +1,13 @@
+#include "bitboard.h"
 #include "board.h"
 #include "fen.h"
 #include "gui_defs.h"
-#include "precalculate.h"
-#include "bitboard.h"
 #include "move.h"
+#include "precalculate.h"
 
 #include <string.h>
 
-typedef enum {
-  GUI,
-  TERM,
-  DEBUG
-} Mode;
+typedef enum { GUI, TERM, DEBUG } Mode;
 
 Mode parse_cmd_args(int argc, char **argv) {
   Mode selected = GUI; // GUI is the default mode
@@ -24,21 +20,9 @@ Mode parse_cmd_args(int argc, char **argv) {
   return selected;
 }
 
-#include "move_gen.h"
-int test_main(void) { 
-  FENInfo f = parse_fen("r3k2r/pp2bppp/2n2q2/1qPQp3/4P1b1/2N2N2/PPP2PPP/1R2K2R w KQkq - 0 1");
-  Board b = {0};
-  board_set_from_fen(&b, f);
-  board_print(&b);
-  MoveList ml = {0};
-  movelist_generate(&ml, &b);
-  movelist_print_list(ml);
-  return 0;
-}
+int test_main(void) { return 0; }
 
-void init(void) {
-  attack_init();
-}
+void init(void) { attack_init(); }
 
 int main(int argc, char *argv[]) {
   init();
