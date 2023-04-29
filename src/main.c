@@ -25,8 +25,8 @@ Mode parse_cmd_args(int argc, char **argv) {
 }
 
 #include "move_gen.h"
-int test_main(void) {
-  FENInfo f = parse_fen("r4rk1/1b3ppp/pq2pn2/1p6/3P4/B7/2PNQPPP/1R3RK1 w - - 0 1");
+int test_main(void) { 
+  FENInfo f = parse_fen("r3k2r/pp2bppp/2n2q2/1qPQp3/4P1b1/2N2N2/PPP2PPP/1R2K2R w KQkq - 0 1");
   Board b = {0};
   board_set_from_fen(&b, f);
   board_print(&b);

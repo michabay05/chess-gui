@@ -216,10 +216,89 @@ static void movelist_gen_queen(MoveList *ml, const Board *const b) {
   }
 }
 
+static void movelist_gen_white_castling(MoveList *ml, const Board *const b) {
+  // Kingside castling
+  if (get_bit(b->state.castling, cr_lK)) {
+    // Check if path is obstructed
+    if (!get_bit(b->pos.units[BOTH], f1) && !get_bit(b->pos.units[BOTH], g1)) {
+      // Is e1 or f1 attacked by a black piece?
+      if (!board_is_sq_attacked(b, e1, DARK) && !board_is_sq_attacked(b, f1, DARK))
+        movelist_add(ml, move_encode(e1, g1, lK, E, 0, 0, 0, 1));
+    }
+  }
+  // Queenside castling
+  if (get_bit(b->state.castling, cr_lQ)) {
+    // Check if path is obstructed
+    if (!get_bit(b->pos.units[BOTH], b1) && !get_bit(b->pos.units[BOTH], c1) &&
+        !get_bit(b->pos.units[BOTH], d1)) {
+      // Is d1 or e1 attacked by a black piece?
+      if (!board_is_sq_attacked(b, d1, DARK) && !board_is_sq_attacked(b, e1, DARK))
+        movelist_add(ml, move_encode(e1, c1, lK, E, 0, 0, 0, 1));
+    }
+  }
+}
+
+static void movelist_gen_black_castling(MoveList *ml, const Board *const b) {
+  // Kingside castling
+  if (get_bit(b->state.castling, cr_dK)) {
+    // Check if path is obstructed
+    if (!get_bit(b->pos.units[BOTH], f8) && !get_bit(b->pos.units[BOTH], g8)) {
+      // Is e8 or f8 attacked by a white piece?
+      if (!board_is_sq_attacked(b, e8, LIGHT) && !board_is_sq_attacked(b, f8, LIGHT))
+        movelist_add(ml, move_encode(e8, g8, dK, E, 0, 0, 0, 1));
+    }
+  }
+  // Queenside castling
+  if (get_bit(b->state.castling, cr_dQ)) {
+    // Check if path is obstructed
+    if (!get_bit(b->pos.units[BOTH], b8) && !get_bit(b->pos.units[BOTH], c8) &&
+        !get_bit(b->pos.units[BOTH], d8)) {
+      // Is d8 or e8 attacked by a white piece?
+      if (!board_is_sq_attacked(b, d8, LIGHT) && !board_is_sq_attacked(b, e8, LIGHT))
+        movelist_add(ml, move_encode(e8, c8, dK, E, 0, 0, 0, 1));
+    }
+  }
+}
+
+static void movelist_gen_king(MoveList *ml, const Board *const b) {
+  /* NOTE: Checks aren't handled by the move generator,
+                                     it's handled by the make move function.
+   */
+  int source, target, piece = b->state.side == LIGHT ? lK : dK;
+  uint64_t bitboard = b->pos.piece[piece], attack;
+  while (bitboard != 0) {
+    source = bb_lsb_index(bitboard);
+
+    attack =
+        king_attacks[source] &
+        (b->state.side == LIGHT ? ~b->pos.units[LIGHT] : ~b->pos.units[DARK]);
+    while (attack != 0) {
+      target = bb_lsb_index(attack);
+
+      if (get_bit((b->pos.units[b->state.side == LIGHT ? DARK : LIGHT]),
+                  target))
+        movelist_add(ml, move_encode(source, target, piece, E, 1, 0, 0, 0));
+      else
+        movelist_add(ml, move_encode(source, target, piece, E, 0, 0, 0, 0));
+
+      // Remove target bit to move onto the next bit
+      pop_bit(attack, target);
+    }
+    // Remove source bit to move onto the next bit
+    pop_bit(bitboard, source);
+  }
+  // Generate castling moves
+  if (b->state.side == LIGHT)
+    movelist_gen_white_castling(ml, b);
+  else
+    movelist_gen_black_castling(ml, b);
+}
+
 void movelist_generate(MoveList *ml, const Board *const b) {
   movelist_gen_pawn(ml, b);
   movelist_gen_knight(ml, b);
   movelist_gen_bishop(ml, b);
   movelist_gen_rook(ml, b);
   movelist_gen_queen(ml, b);
+  movelist_gen_king(ml, b);
 }
