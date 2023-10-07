@@ -24,7 +24,7 @@ void draw_board(const GUI_Board gb, Section sec)
     DrawRectangleLines(sec.padding.x, sec.padding.y, sec.size.x, sec.size.y, RED);
 }
 
-void draw_pieces(Texture2D *tex, Piece piece, int row, int col, Section sec)
+void draw_piece(Texture2D *tex, Piece piece, int row, int col, Section sec)
 {
     if (piece == E) return;
 
@@ -46,25 +46,56 @@ void draw_pieces(Texture2D *tex, Piece piece, int row, int col, Section sec)
                    (Rectangle){pos[0], pos[1], texture_dim[0], texture_dim[1]}, (Vector2){0, 0}, 0, WHITE);
 }
 
-void draw_promotion_options(Section sec)
+void draw_promotion_options(Texture* tex, bool is_white, Section sec)
 {
-    Vector2 rect_size = { sec.size.x * 0.6f, sec.size.y * 0.125f };
+    Vector2 rect_size = { sec.size.x * 0.6f, sec.size.y * 0.15f };
     Vector2 center = {
         (sec.padding.x + sec.size.x / 2.f) - (rect_size.x / 2.f),
         (sec.padding.y + sec.size.y / 2.f) - (rect_size.y / 2.f)
     };
-    /* DrawRectangleV(
+    DrawRectangleV(
         center,
         rect_size,
         (Color) { 20, 20, 20, 150 }
-    ); */
+    );
 
+    SetTextureFilter(*tex, TEXTURE_FILTER_BILINEAR);
     for (int i = 0; i < 4; i++) {
-        DrawRectangleV(
-            (Vector2) { center.x + 2.5 + i * (rect_size.x * 0.25f), center.y },
-            (Vector2) { rect_size.x * 0.25f - 5, rect_size.y },
+        float frame_width = tex->width / 6.0f;   // INDEX FROM ALL PIECE TYPES
+        float frame_height = tex->height / 2.0f; // INDEX FOR WHITE OR BLACK
+        int color = is_white;
+        int type = i + 1;
+
+        const float SCALE = 0.85; // MAGIC NUMBER I CHOSE BECAUSE IT LOOKS GOOD
+        const float SQ_SIZE = rect_size.x * 0.25f;
+        float texture_dim[2] = {SQ_SIZE * SCALE, SQ_SIZE * SCALE};
+        float pos[2] = { center.x + i * SQ_SIZE + ((SQ_SIZE - texture_dim[0]) / 2.0f), center.y };
+        /* DrawRectangleV(
+            (Vector2) { center.x + i * SQ_SIZE, center.y },
+            (Vector2) { SQ_SIZE, rect_size.y },
             (Color) { 200, 0, 0, 50 }
-        );
+        ); */
+        DrawTexturePro(*tex,
+                    (Rectangle){type * frame_width, color * frame_height, frame_width, frame_height},
+                    (Rectangle){pos[0], pos[1], texture_dim[0], texture_dim[1]}, (Vector2){0, 0}, 0, WHITE);
+    }
+}
+
+void choose_promotion_piece(GUI_Board* gb, Section sec)
+{
+    Vector2 rect_size = { sec.size.x * 0.6f, sec.size.y * 0.15f };
+    Vector2 center = {
+        (sec.padding.x + sec.size.x / 2.f) - (rect_size.x / 2.f),
+        (sec.padding.y + sec.size.y / 2.f) - (rect_size.y / 2.f)
+    };
+    Vector2 mouse_pos = GetMousePosition();
+    if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT) &&
+        CheckCollisionPointRec(mouse_pos, (Rectangle){center.x, center.y, rect_size.x, rect_size.y})) {
+        mouse_pos = Vector2Subtract(mouse_pos, center); 
+        gb->promoted_choice = (int)(mouse_pos.x / (rect_size.x / 4.f)) + 1;
+        if (gb->board.state.side == DARK) gb->promoted_choice += 6;
+        gb->is_promotion = false;
+        TraceLog(LOG_INFO, "from choose(); piece chosen: %d.\n", gb->promoted_choice);
     }
 }
 
@@ -109,9 +140,12 @@ int gui_main(void)
     SetTargetFPS(30);
 
     Texture2D tex = LoadTexture("assets/neo-pieces-spritesheet.png");
-    FENInfo fen = parse_fen(
-        "6R1/P2k4/r7/5N1P/r7/p7/7K/8 w - - 0 1");
-        // "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
+    
+#if 1
+    FENInfo fen = parse_fen("8/8/1k6/8/p3K3/8/8/8 w - - 0 1");
+#else
+    FENInfo fen = parse_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
+#endif
     UI_State state = { 0 };
     GUI_Board gb = { 0 };
     gui_board_init(&gb);
@@ -163,6 +197,9 @@ int gui_main(void)
             },
         };
 
+        if (gb.is_promotion)
+            choose_promotion_piece(&gb, state.sections[SECTION_BOARD]);
+
         gui_board_update(&gb, state.sections[SECTION_BOARD]);
         BeginDrawing();
         {
@@ -171,9 +208,10 @@ int gui_main(void)
             draw_eval_bar(state.sections[SECTION_EVAL_BAR]);
             draw_board(gb, state.sections[SECTION_BOARD]);
             for (int i = 0; i < 64; i++) {
-                draw_pieces(&tex, pos_get_piece(gb.board.pos, i), ROW(i), COL(i), state.sections[SECTION_BOARD]);
+                draw_piece(&tex, pos_get_piece(gb.board.pos, i), ROW(i), COL(i), state.sections[SECTION_BOARD]);
             }
-            draw_promotion_options(state.sections[SECTION_BOARD]);
+            if (gb.is_promotion)
+                draw_promotion_options(&tex, gb.board.state.side, state.sections[SECTION_BOARD]);
             draw_moves_list(state.sections[SECTION_MOVES_LIST]);
             draw_info(state.sections[SECTION_INFO]);
         }

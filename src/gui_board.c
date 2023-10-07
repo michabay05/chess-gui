@@ -4,13 +4,8 @@
 #include "precalculate.h"
 #include "gui_defs.h"
 
-static bool is_in_bound(Vector2 pos, Section sec) {
-    return (pos.x >= sec.padding.x && pos.x <= sec.padding.x + sec.size.x) &&
-           (pos.y >= sec.padding.y && pos.y <= sec.padding.y + sec.size.y);
-}
-
 static Sq coord_to_sq(Vector2 mouse_pos, Section sec) {
-    if (is_in_bound(mouse_pos, sec)) {
+    if (CheckCollisionPointRec(mouse_pos, (Rectangle){sec.padding.x, sec.padding.y, sec.size.x, sec.size.y})) {
         mouse_pos.x -= sec.padding.x;
         mouse_pos.y -= sec.padding.y;
         return SQ(
@@ -44,22 +39,37 @@ static void gui_board_set_target(GUI_Board *gb, Section sec) {
         Sq temp_selected = coord_to_sq(GetMousePosition(), sec);
         if (temp_selected == gb->selected) return;
         if (!get_bit(gb->preview, temp_selected)) return;
-        bool is_capture = false;
-        if (pos_get_piece(gb->board.pos, temp_selected) != E) {
-            is_capture = true;
-        }
         gb->target = temp_selected;
-        Move mv = movelist_search(gb->ml, gb->selected, gb->target, E);
-        if (mv == E) return;
-        if (!move_make(&gb->board, mv, AllMoves)) {
-            TraceLog(LOG_ERROR, "Failed to make move");
+        if (pos_get_piece(gb->board.pos, gb->selected) % 6 == 0 &&
+            (ROW(gb->target) == 0 || ROW(gb->target) == 7)) {
+            gb->is_promotion = true;
         }
-        gb->selected = noSq;
-        gb->target = noSq;
     }
+
 }
 
-static void gui_board_update_preview(GUI_Board *gb) {
+static void gui_board_make_move(GUI_Board* gb)
+{
+    if (gb->target == noSq) return;
+    if (gb->is_promotion) return;
+    bool is_capture = false;
+    if (pos_get_piece(gb->board.pos, gb->target) != E) {
+        is_capture = true;
+    }
+    TraceLog(LOG_INFO, "Piece chosen: %d.\n", gb->promoted_choice);
+    Move mv = movelist_search(gb->ml, gb->selected, gb->target, gb->promoted_choice);
+    if (mv == E) return;
+    if (!move_make(&gb->board, mv, AllMoves)) {
+        TraceLog(LOG_ERROR, "Failed to make move");
+    }
+    gb->selected = noSq;
+    gb->target = noSq;
+    gb->promoted_choice = E;
+    gb->is_promotion = false;
+}
+
+static void gui_board_update_preview(GUI_Board* gb)
+{
     gb->preview = 0;
     if (gb->selected == noSq)
         return;
@@ -81,11 +91,12 @@ static void gui_board_update_preview(GUI_Board *gb) {
         }
         gb->board = clone;
     }
-    TraceLog(LOG_INFO, "Regenerated move list\n");
 }
 
 void gui_board_init(GUI_Board *gb) {
     gb->board = (Board){0};
+    gb->is_promotion = false;
+    gb->promoted_choice = E;
     gb->selected = noSq;
     gb->target = noSq;
     gb->preview = 0ULL;
@@ -95,4 +106,5 @@ void gui_board_update(GUI_Board *gb, Section sec) {
     gui_board_set_selected(gb, sec);
     gui_board_update_preview(gb);
     gui_board_set_target(gb, sec);
+    gui_board_make_move(gb);
 }

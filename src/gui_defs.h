@@ -23,6 +23,8 @@
 typedef struct
 {
     Board board;
+    bool is_promotion;
+    Piece promoted_choice;
     MoveList ml;
     Sq selected;
     Sq target;
