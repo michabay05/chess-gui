@@ -35,6 +35,5 @@ clean:
 	$(RM) -r $(BIN_DIR)
 
 run:
-	clear
 	$(MAKE) all
-	$(BIN) $(MODE)
+	$(BIN)
