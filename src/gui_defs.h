@@ -5,7 +5,7 @@
 #include "move_gen.h"
 #include "raylib.h"
 
-#include <stdlib.h>  // For realloc()
+#include <stdlib.h>  // For realloc(), file writing
 
 #define SCREEN_WIDTH 1000
 #define SCREEN_HEIGHT 600
@@ -29,6 +29,8 @@ typedef struct
     Sq selected;
     Sq target;
     uint64_t preview;
+
+    FILE* fptr;
 } GUI_Board;
 
 typedef enum
@@ -45,15 +47,23 @@ typedef struct
     Vector2 padding;
 } Section;
 
+typedef enum
+{
+    GS_NORMAL,
+    GS_CHECKMATE,
+    GS_STALEMATE,
+} GameState;
+
 typedef struct
 {
     Section sections[4];
     Font font;
+    GameState state;
 } UI_State;
 
 // gui_main.c
 int gui_main(void);
 
 // gui_board.c
-void gui_board_init(GUI_Board *gb);
+void gui_board_init(GUI_Board *gb, char* filename);
 void gui_board_update(GUI_Board *gb, Section sec);

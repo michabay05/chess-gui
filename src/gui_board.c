@@ -48,6 +48,29 @@ static void gui_board_set_target(GUI_Board *gb, Section sec) {
 
 }
 
+static void record_move(FILE* fptr, int move_count, bool is_white, Move move)
+{
+    if (fptr == NULL) return;
+
+    // @FIX BUG: the '1. ..' doesn't work when white moves first
+    // Example problem: 
+    //             v---v
+        // 1. e4d4 1. .. a4a3 
+        // 2. d4c3  a3a2 
+    // I might also need to refactor the move counting system
+    if (move_count == 1 && !is_white) {
+        fprintf(fptr, "1. ..");
+    } else if (is_white) {
+        fprintf(fptr, "%d.", move_count);
+    }
+    
+    char move_str[6] = { 0 };
+    move_to_str(move, move_str);
+    fprintf(fptr, " %s", move_str);
+    if (!is_white)
+        fprintf(fptr, "\n");
+}
+
 static void gui_board_make_move(GUI_Board* gb)
 {
     if (gb->target == noSq) return;
@@ -56,12 +79,14 @@ static void gui_board_make_move(GUI_Board* gb)
     if (pos_get_piece(gb->board.pos, gb->target) != E) {
         is_capture = true;
     }
-    TraceLog(LOG_INFO, "Piece chosen: %d.\n", gb->promoted_choice);
     Move mv = movelist_search(gb->ml, gb->selected, gb->target, gb->promoted_choice);
     if (mv == E) return;
+    int move_count = gb->board.state.full_moves;
     if (!move_make(&gb->board, mv, AllMoves)) {
         TraceLog(LOG_ERROR, "Failed to make move");
     }
+    record_move(gb->fptr, move_count, gb->board.state.side == DARK, mv);
+
     gb->selected = noSq;
     gb->target = noSq;
     gb->promoted_choice = E;
@@ -93,13 +118,15 @@ static void gui_board_update_preview(GUI_Board* gb)
     }
 }
 
-void gui_board_init(GUI_Board *gb) {
+void gui_board_init(GUI_Board *gb, char* filename) {
     gb->board = (Board){0};
     gb->is_promotion = false;
     gb->promoted_choice = E;
     gb->selected = noSq;
     gb->target = noSq;
     gb->preview = 0ULL;
+
+    gb->fptr = fopen(filename, "w");
 }
 
 void gui_board_update(GUI_Board *gb, Section sec) {

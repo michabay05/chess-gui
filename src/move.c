@@ -60,8 +60,8 @@ void move_to_str(const Move move, char *move_str) {
     move_str[0] = str_coords[move_get_source(move)][0];
     move_str[1] = str_coords[move_get_source(move)][1];
     // Target square
-    move_str[2] = str_coords[move_get_target(move)][2];
-    move_str[3] = str_coords[move_get_target(move)][3];
+    move_str[2] = str_coords[move_get_target(move)][0];
+    move_str[3] = str_coords[move_get_target(move)][1];
     // Promotion piece
     move_str[4] = move_promoted_char(move);
 }
@@ -214,8 +214,7 @@ bool move_make(Board *main, Move move, MoveType move_flag) {
         *main = copy;
         return false;
     } else {
-        if (!main->state.side)
-            main->state.full_moves++;
+        if (!main->state.side) main->state.full_moves++;
         return true;
     }
 }

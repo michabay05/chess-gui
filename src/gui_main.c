@@ -95,12 +95,28 @@ void choose_promotion_piece(GUI_Board* gb, Section sec)
         gb->promoted_choice = (int)(mouse_pos.x / (rect_size.x / 4.f)) + 1;
         if (gb->board.state.side == DARK) gb->promoted_choice += 6;
         gb->is_promotion = false;
-        TraceLog(LOG_INFO, "from choose(); piece chosen: %d.\n", gb->promoted_choice);
-    }
+   }
 }
 
-void draw_eval_bar(Section sec)
+void draw_eval_bar(float eval, Section sec)
 {
+    const float MAGIC_FACTOR = 0.1443f;
+    float scale = sqrt(fabsf(eval)) * MAGIC_FACTOR;
+    scale *= eval < 0 ? 1 : -1;
+    scale += 0.5;
+
+    DrawRectangleV(
+        sec.padding,
+        (Vector2) { sec.size.x, sec.size.y * scale },
+        (Color) { 15, 15, 15, 255 }
+    );
+
+    DrawRectangleV(
+        (Vector2) { sec.padding.x, sec.padding.y + sec.size.y * scale },
+        (Vector2) { sec.size.x, sec.size.y * (1 - scale) },
+        RAYWHITE
+    );
+
     DrawRectangleLines(
         sec.padding.x,
         sec.padding.y,
@@ -146,12 +162,15 @@ int gui_main(void)
 #else
     FENInfo fen = parse_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
 #endif
-    UI_State state = { 0 };
+    UI_State us = { 0 };
     GUI_Board gb = { 0 };
-    gui_board_init(&gb);
+    gui_board_init(&gb, "moves.txt");
     board_set_from_fen(&gb.board, fen);
 
+    us.font =  LoadFontEx("assets/font/Rubik-Regular.ttf", 30, NULL, 0);
+
     Vector2 current_pos = { 0 };
+    float eval = 0;
 
     while (!WindowShouldClose()) {
         float horz_padding = GetRenderWidth() * 0.01f;
@@ -159,34 +178,34 @@ int gui_main(void)
 
         float eval_vert_size = fmin(0.6 * GetRenderWidth(), 0.95 * GetRenderHeight());
         float eval_vert_pad = fmax(GetRenderWidth() - eval_vert_size, GetRenderHeight() - eval_vert_size);
-        state.sections[SECTION_EVAL_BAR] = (Section) {
+        us.sections[SECTION_EVAL_BAR] = (Section) {
             .size = (Vector2) { GetRenderWidth() * 0.03f, eval_vert_size},
             .padding = (Vector2) {horz_padding, vert_padding}
         };
-        current_pos.x = state.sections[SECTION_EVAL_BAR].padding.x + state.sections[SECTION_EVAL_BAR].size.x;
-        current_pos.y = state.sections[SECTION_EVAL_BAR].padding.y;
+        current_pos.x = us.sections[SECTION_EVAL_BAR].padding.x + us.sections[SECTION_EVAL_BAR].size.x;
+        current_pos.y = us.sections[SECTION_EVAL_BAR].padding.y;
 
         float squares_area = fmin(0.6 * GetRenderWidth(), 0.95 * GetRenderHeight());
-        state.sections[SECTION_BOARD] = (Section) {
+        us.sections[SECTION_BOARD] = (Section) {
             .size = (Vector2) { squares_area, squares_area },
             .padding = (Vector2) {
                 current_pos.x + horz_padding,
                 current_pos.y,
             }
         };
-        current_pos.x = state.sections[SECTION_BOARD].padding.x + state.sections[SECTION_BOARD].size.x;
-        current_pos.y = state.sections[SECTION_BOARD].padding.y;
+        current_pos.x = us.sections[SECTION_BOARD].padding.x + us.sections[SECTION_BOARD].size.x;
+        current_pos.y = us.sections[SECTION_BOARD].padding.y;
 
-        state.sections[SECTION_MOVES_LIST] = (Section) {
+        us.sections[SECTION_MOVES_LIST] = (Section) {
             .size = (Vector2) { GetRenderWidth() - (current_pos.x + 2 * horz_padding), GetRenderHeight() * 0.6f },
             .padding = (Vector2) {
                 current_pos.x + horz_padding,
                 current_pos.y
             },
         };
-        current_pos.y = state.sections[SECTION_MOVES_LIST].padding.y + state.sections[SECTION_MOVES_LIST].size.y;
+        current_pos.y = us.sections[SECTION_MOVES_LIST].padding.y + us.sections[SECTION_MOVES_LIST].size.y;
 
-        state.sections[SECTION_INFO] = (Section) {
+        us.sections[SECTION_INFO] = (Section) {
             .size = (Vector2) {
                 GetRenderWidth() - (current_pos.x + 2 * horz_padding),
                 GetRenderHeight() - (current_pos.y + 2 * vert_padding)
@@ -198,25 +217,32 @@ int gui_main(void)
         };
 
         if (gb.is_promotion)
-            choose_promotion_piece(&gb, state.sections[SECTION_BOARD]);
+            choose_promotion_piece(&gb, us.sections[SECTION_BOARD]);
 
-        gui_board_update(&gb, state.sections[SECTION_BOARD]);
+        gui_board_update(&gb, us.sections[SECTION_BOARD]);
         BeginDrawing();
         {
             ClearBackground(BACKGROUND);
 
-            draw_eval_bar(state.sections[SECTION_EVAL_BAR]);
-            draw_board(gb, state.sections[SECTION_BOARD]);
+            draw_eval_bar(eval, us.sections[SECTION_EVAL_BAR]);
+            draw_board(gb, us.sections[SECTION_BOARD]);
             for (int i = 0; i < 64; i++) {
-                draw_piece(&tex, pos_get_piece(gb.board.pos, i), ROW(i), COL(i), state.sections[SECTION_BOARD]);
+                draw_piece(&tex, pos_get_piece(gb.board.pos, i), ROW(i), COL(i), us.sections[SECTION_BOARD]);
             }
             if (gb.is_promotion)
-                draw_promotion_options(&tex, gb.board.state.side, state.sections[SECTION_BOARD]);
-            draw_moves_list(state.sections[SECTION_MOVES_LIST]);
-            draw_info(state.sections[SECTION_INFO]);
+                draw_promotion_options(&tex, gb.board.state.side, us.sections[SECTION_BOARD]);
+            draw_moves_list(us.sections[SECTION_MOVES_LIST]);
+            draw_info(us.sections[SECTION_INFO]);
+            
+            DrawTextEx(us.font, TextFormat("Eval: %.1f", eval),
+                       (Vector2) { 700, 500 }, us.font.baseSize, 0, WHITE); // Draw text using font and additional parameters
         }
         EndDrawing();
     }
+
+    // De-initialization
+    fclose(gb.fptr);
+    UnloadFont(us.font);
     UnloadTexture(tex);
     CloseWindow();
 
