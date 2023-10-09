@@ -4,19 +4,19 @@
 #include "precalculate.h"
 #include "gui_defs.h"
 
-static Sq coord_to_sq(Vector2 mouse_pos, Section sec) {
-    if (CheckCollisionPointRec(mouse_pos, (Rectangle){sec.padding.x, sec.padding.y, sec.size.x, sec.size.y})) {
-        mouse_pos.x -= sec.padding.x;
-        mouse_pos.y -= sec.padding.y;
+static Sq coord_to_sq(Vector2 mouse_pos, Rectangle sec) {
+    if (CheckCollisionPointRec(mouse_pos, sec)) {
+        mouse_pos.x -= sec.x;
+        mouse_pos.y -= sec.y;
         return SQ(
-            (int)(mouse_pos.y / (sec.size.y / 8.f)),
-            (int)(mouse_pos.x / (sec.size.x / 8.f))
+            (int)(mouse_pos.y / (sec.height / 8.f)),
+            (int)(mouse_pos.x / (sec.width / 8.f))
         );
     }
     return noSq;
 }
 
-static void gui_board_set_selected(GUI_Board *gb, Section sec) {
+static void gui_board_set_selected(GUI_Board *gb, Rectangle sec) {
     if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
         if (gb->selected != noSq) return;
         Sq temp_selected = coord_to_sq(GetMousePosition(), sec);
@@ -33,7 +33,7 @@ static void gui_board_set_selected(GUI_Board *gb, Section sec) {
     }
 }
 
-static void gui_board_set_target(GUI_Board *gb, Section sec) {
+static void gui_board_set_target(GUI_Board *gb, Rectangle sec) {
     if (gb->selected == noSq) return;
     if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
         Sq temp_selected = coord_to_sq(GetMousePosition(), sec);
@@ -124,7 +124,7 @@ void gui_board_init(GUI_Board *gb) {
     gb->preview = 0ULL;
 }
 
-void gui_board_update(GUI_Board *gb, FILE* record_fptr, Section sec) {
+void gui_board_update(GUI_Board *gb, FILE* record_fptr, Rectangle sec) {
     gui_board_set_selected(gb, sec);
     gui_board_update_preview(gb);
     gui_board_set_target(gb, sec);

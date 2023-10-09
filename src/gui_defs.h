@@ -39,12 +39,6 @@ typedef enum
     SECTION_INFO
 } SectionType;
 
-typedef struct
-{
-    Vector2 size;
-    Vector2 padding;
-} Section;
-
 typedef enum
 {
     GS_NORMAL,
@@ -54,8 +48,7 @@ typedef enum
 
 typedef struct
 {
-    // @REFACTOR: redefine sections to rectangles
-    Section sections[4];
+    Rectangle sections[4];
     Font font[3];
     GameState state;
     GUI_Board gb;
@@ -68,4 +61,4 @@ int gui_main(void);
 
 // gui_board.c
 void gui_board_init(GUI_Board *gb);
-void gui_board_update(GUI_Board *gb, FILE* record_fptr, Section sec);
+void gui_board_update(GUI_Board *gb, FILE* record_fptr, Rectangle sec);
