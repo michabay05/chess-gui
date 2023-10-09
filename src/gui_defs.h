@@ -29,8 +29,6 @@ typedef struct
     Sq selected;
     Sq target;
     uint64_t preview;
-
-    FILE* fptr;
 } GUI_Board;
 
 typedef enum
@@ -56,14 +54,18 @@ typedef enum
 
 typedef struct
 {
+    // @REFACTOR: redefine sections to rectangles
     Section sections[4];
-    Font font;
+    Font font[3];
     GameState state;
-} UI_State;
+    GUI_Board gb;
+
+    FILE* fptr;
+} Game;
 
 // gui_main.c
 int gui_main(void);
 
 // gui_board.c
-void gui_board_init(GUI_Board *gb, char* filename);
-void gui_board_update(GUI_Board *gb, Section sec);
+void gui_board_init(GUI_Board *gb);
+void gui_board_update(GUI_Board *gb, FILE* record_fptr, Section sec);

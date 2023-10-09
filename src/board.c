@@ -66,6 +66,7 @@ void board_set_from_fen(Board *board, FENInfo fen) {
     board->state.full_moves = fen.full_moves;
 }
 
+/*
 static void print_castling(int castling) {
     char castling_str[4] = {'-', '-', '-', '-'};
     if (castling & cr_lK)
@@ -78,6 +79,7 @@ static void print_castling(int castling) {
         castling_str[3] = 'q';
     printf("%s\n", castling_str);
 }
+*/
 
 void board_print(const Board *const b) {
     printf("\n    +---+---+---+---+---+---+---+---+\n");

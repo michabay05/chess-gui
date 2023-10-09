@@ -71,21 +71,18 @@ static void record_move(FILE* fptr, int move_count, bool is_white, Move move)
         fprintf(fptr, "\n");
 }
 
-static void gui_board_make_move(GUI_Board* gb)
+static void gui_board_make_move(GUI_Board* gb, FILE* record_fptr)
 {
     if (gb->target == noSq) return;
     if (gb->is_promotion) return;
-    bool is_capture = false;
-    if (pos_get_piece(gb->board.pos, gb->target) != E) {
-        is_capture = true;
-    }
+
     Move mv = movelist_search(gb->ml, gb->selected, gb->target, gb->promoted_choice);
     if (mv == E) return;
     int move_count = gb->board.state.full_moves;
     if (!move_make(&gb->board, mv, AllMoves)) {
         TraceLog(LOG_ERROR, "Failed to make move");
     }
-    record_move(gb->fptr, move_count, gb->board.state.side == DARK, mv);
+    record_move(record_fptr, move_count, gb->board.state.side == DARK, mv);
 
     gb->selected = noSq;
     gb->target = noSq;
@@ -118,20 +115,18 @@ static void gui_board_update_preview(GUI_Board* gb)
     }
 }
 
-void gui_board_init(GUI_Board *gb, char* filename) {
+void gui_board_init(GUI_Board *gb) {
     gb->board = (Board){0};
     gb->is_promotion = false;
     gb->promoted_choice = E;
     gb->selected = noSq;
     gb->target = noSq;
     gb->preview = 0ULL;
-
-    gb->fptr = fopen(filename, "w");
 }
 
-void gui_board_update(GUI_Board *gb, Section sec) {
+void gui_board_update(GUI_Board *gb, FILE* record_fptr, Section sec) {
     gui_board_set_selected(gb, sec);
     gui_board_update_preview(gb);
     gui_board_set_target(gb, sec);
-    gui_board_make_move(gb);
+    gui_board_make_move(gb, record_fptr);
 }
