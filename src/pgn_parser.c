@@ -7,9 +7,11 @@
 #define BUF_SIZE 64 * 1024
 
 typedef enum {
+    PGN_NONE,
     PGN_METADATA_KEY,
     PGN_METADATA_VALUE,
     PGN_MOVE,
+    PGN_COMMENT,
 } PGN_TokenKind;
 
 typedef struct {
@@ -77,9 +79,11 @@ bool is_move_text(char* buf, size_t size, size_t ind)
 {
     size_t i = ind;
     char c;
-    while (!isspace((c = peek(buf, size, i)))) {
+    while (c != '\0' && !isspace(c)) {
         if (is_valid_move_letter(c)) return true;
         else consume(buf, size, &i);
+
+        c = peek(buf, size, i);
     }
     return false;
 }
@@ -102,14 +106,21 @@ bool str_append_char(char** dest, char c)
 
 void token_append(PGN_TokenList* tl, PGN_Token t)
 {
-    tl->tokens = (PGN_Token*) realloc(tl->tokens, (tl->count + 1) * sizeof(PGN_Token));
-    tl->tokens[tl->count++] = t;
+    tl->count++;
+    tl->tokens = (PGN_Token*) realloc(tl->tokens, tl->count * sizeof(PGN_Token));
+
+    tl->tokens[tl->count - 1].buf = (char*) malloc(strlen(t.buf) * sizeof(char) + 1);
+    memcpy(tl->tokens[tl->count - 1].buf, t.buf, strlen(t.buf));
+    tl->tokens[tl->count - 1].buf[strlen(t.buf)] = '\0';
+    tl->tokens[tl->count - 1].kind = t.kind;
 }
 
 void token_print(PGN_Token t)
 {
-    char* kind_str;
+    const char* kind_str;
     switch (t.kind) {
+        case PGN_NONE:
+            return;
         case PGN_METADATA_KEY:
             kind_str = "key";
             break;
@@ -119,8 +130,11 @@ void token_print(PGN_Token t)
         case PGN_MOVE:
             kind_str = "move";
             break;
+        case PGN_COMMENT:
+            kind_str = "comment";
+            break;
     }
-    printf("[TOKEN: %5s] %s", kind_str, t.buf);
+    printf("[TOKEN: %7s] %s", kind_str, t.buf);
 }
 
 void token_reset(PGN_Token* t)
@@ -129,17 +143,11 @@ void token_reset(PGN_Token* t)
     t->kind = 0;
 }
 
-
 void parse_lines(char* buf, PGN_TokenList* tl)
 {
     const size_t size = strlen(buf);
     if (buf == NULL || size == 0) return;
     
-    // @TODO: this parsing fails to work on the 'fischer_v_spassky.pgn' file
-    // When parsing the PGN metadata key, if I add print in the character consumption
-    // loop, it parses the keys properly. However, if I comment the print statement out,
-    // it gets stuck in an infinite loop.
-
     size_t i = 0;
     PGN_Token t = { 0 };
     while (!is_at_end(size, i)) {
@@ -154,32 +162,38 @@ void parse_lines(char* buf, PGN_TokenList* tl)
             }
             t.kind = PGN_METADATA_KEY;
             token_append(tl, t);
-            token_print(t);
             token_reset(&t);
-            consume(buf, size, &i); // Consume ' '
 
+            consume(buf, size, &i); // Consume ' '
             consume(buf, size, &i); // Consume '"'
+
             while (peek(buf, size, i) != '"') {
                 str_append_char(&t.buf, consume(buf, size, &i));
             }
             t.kind = PGN_METADATA_VALUE;
             token_append(tl, t);
-            token_print(t);
             token_reset(&t);
-            consume(buf, size, &i); // Consume '"'
 
+            consume(buf, size, &i); // Consume '"'
             consume(buf, size, &i); // Consume the closing square bracket mark
+        } else if (c == '{') {
+            consume(buf, size, &i); // Consume '{'
+            while (peek(buf, size, i) != '}') {
+                str_append_char(&t.buf, consume(buf, size, &i));
+            }
+            t.kind = PGN_COMMENT;
+            token_append(tl, t);
+            token_reset(&t);
+            consume(buf, size, &i); // Consume '}'
         } else if (is_move_number(buf, size, i)) {
-            while (isdigit(peek(buf, size, i))) { consume(buf, size, &i); }
-            consume(buf, size, &i); // Consume the period after the move number
-            consume(buf, size, &i); // Consume the space after the move number's period
+            while (peek(buf, size, i) != '.') { consume(buf, size, &i); }
+            while (peek(buf, size, i) == '.') { consume(buf, size, &i); }
         } else if (is_move_text(buf, size, i)) {
             while (!isspace(peek(buf, size, i))) {
                 str_append_char(&t.buf, consume(buf, size, &i));
             }
             t.kind = PGN_MOVE;
             token_append(tl, t);
-            token_print(t);
             token_reset(&t);
         } else if (isspace(c)) {
             consume(buf, size, &i);
@@ -190,8 +204,9 @@ void parse_lines(char* buf, PGN_TokenList* tl)
 
 int main(void)
 {
-    // const char* file_path = "examples/fischer_v_spassky.pgn";
-    const char* file_path = "examples/without_comments.pgn";
+    //const char* file_path = "examples/fischer_v_spassky_modified.pgn";
+    const char* file_path = "examples/fischer_v_spassky.pgn";
+    // const char* file_path = "examples/without_comments.pgn";
 
     FILE* fptr = fopen(file_path, "r");
     if (fptr == NULL) {
@@ -207,7 +222,7 @@ int main(void)
     }
 
     for (size_t i = 0; i < tl.count; i++) {
-        printf("%3ld. ", i);
+        printf("%3ld. ", i + 1);
         token_print(tl.tokens[i]);
         printf("\n");
     }

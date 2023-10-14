@@ -67,6 +67,6 @@
 - [ ] PGN
   - [x] Parse header section
   - [x] Parse move section (without comments)
-  - [ ] Parse move section (with comments)
+  - [x] Parse move section (with comments)
 - [ ] UCI
   - [UCI commands notes](https://gist.github.com/aliostad/f4470274f39d29b788c1b09519e67372)
