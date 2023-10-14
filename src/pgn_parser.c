@@ -1,79 +1,127 @@
 #include <ctype.h>
+#include <stdbool.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 #define BUF_SIZE 64 * 1024
 
-#define peek(buf, size, curr_ind) peek_ahead(buf, size, curr_ind, 0)
-#define peek_next(buf, size, curr_ind) peek_ahead(buf, size, curr_ind, 1)
+#define peek(buf, size, ind) peek_ahead(buf, size, ind, 0)
+#define peek_next(buf, size, ind) peek_ahead(buf, size, ind, 1)
 
-char peek_ahead(char* buf, size_t buf_size, size_t curr_ind, size_t ahead)
+bool is_at_end(size_t size, size_t ind)
 {
-    if (curr_ind >= buf_size) return '\0';
-    return buf[curr_ind + ahead];
+    return ind >= size;
 }
 
-char consume(char* buf, size_t buf_size, size_t* curr_ind)
+char peek_ahead(char* buf, size_t size, size_t ind, size_t ahead)
 {
-    (*curr_ind)++;
-    if (*curr_ind >= buf_size) return '\0';
-    char output = buf[(*curr_ind) - 1];
+    if (is_at_end(size, ind)) return '\0';
+    return buf[ind + ahead];
+}
+
+char consume(char* buf, size_t size, size_t* ind)
+{
+    (*ind)++;
+    if (is_at_end(size, *ind)) return '\0';
+    char output = buf[(*ind) - 1];
     return output;
 }
 
-void parse_lines(char* buf, size_t size)
+bool is_move_number(char* buf, size_t size, size_t ind)
 {
+    size_t i = ind;
+    char c;
+    while ((c = peek(buf, size, i)) != '.') {
+        if (!isdigit(c)) return false;
+        consume(buf, size, &i);
+    }
+    return true;
+}
+
+bool is_valid_move_letter(char c)
+{
+    if (c == '\0') return false;
+
+    char* accepted_chars[5] = {
+        "NBRQK",      // Piece types
+        "abcdefgh",   // file letters
+        "12345678",   // rank numbers
+        "O0",         // Castling letter
+        "-+#",        // Other symbols
+    };
+    for (int i = 0; i < 5; i++) {
+        if (strchr(accepted_chars[i], c) != NULL) return true;
+    }
+
+    return false;
+}
+
+bool is_move_text(char* buf, size_t size, size_t ind)
+{
+    size_t i = ind;
+    char c;
+    while (!isspace((c = peek(buf, size, i)))) {
+        if (is_valid_move_letter(c)) return true;
+        else consume(buf, size, &i);
+    }
+    return false;
+}
+
+void parse_lines(char* buf)
+{
+    const size_t size = strlen(buf);
     if (buf == NULL || size == 0) return;
     
-    // @TODO: can't figure out why `consume()` isn't working properly in the move parsing section
-    // It gets stuck on black's move after the white's move - 'Bd3'
-    // It's probably because of end of buffer index control; The move - 'Bd3' - is the last move before the
-    // newline. So the problem lies in the index control of `consume()` and its placement and order in the 
-    // move parsing section
+    // @TODO: something is wrong with consume()
+    // It can't appropriately consume spaces and newlines; therefore,
+    // on the first PNG metadata -- EVENT -- is consumed. Then, it's stuck
+    // in an infinite loop
 
     size_t i = 0;
-    char accepted_chars[] = {'-', '#', '+'};
-    while (i < size) {
-        char c = buf[i];
+    while (!is_at_end(size, i)) {
+        char c = peek(buf, size, i);
         if (c == '[') {
+            // [KEY "VALUE"
             // PGN meta data
-            consume(buf, size, &i);
-            while (i < size && peek(buf, size, i) != ']') {
+            consume(buf, size, &i); // Consume [
+            // Consumes the entire word of the KEY
+            while (peek(buf, size, i) != ' ') {
                 printf("%c", consume(buf, size, &i));
-                if (c == '"') {
-                    // Value of PGN meta data
-                    printf("\t");
-                    consume(buf, size, &i); // opening quotation mark
-                    while (i < size && (isgraph(peek(buf, size, i)) && peek(buf, size, i) != '"')) {
-                        printf("%c", consume(buf, size, &i));
-                    }
-                    consume(buf, size, &i); // closing quotation mark
-                    printf("\n");
-                }
             }
+            consume(buf, size, &i); // Consume ' '
+
             printf("\n");
-        } else if (isdigit(peek(buf, size, i)) && peek_next(buf, size, i) == '.') {
-            while (peek(buf, size, i) != ' ') { consume(buf, size, &i); }
-            consume(buf, size, &i); // Consume the space after the move number
-            while (isalnum(peek(buf, size, i)) || peek(buf, size, i) == '-') {
+
+            consume(buf, size, &i); // Consume '"'
+            while (peek(buf, size, i) != '"') {
                 printf("%c", consume(buf, size, &i));
             }
-            consume(buf, size, &i); // Consume the space between white's and black's move
-            printf("\t\t");
-            while (isalnum(peek(buf, size, i)) || strchr(accepted_chars, peek(buf, size, i)) != NULL) {
-                printf("%c", consume(buf, size, &i));
-            }
+            consume(buf, size, &i); // Consume '"'
+
+            consume(buf, size, &i); // Consume the closing square bracket mark
             printf("\n");
+        } else if (is_move_number(buf, size, i)) {
+            printf("\n");
+            while (isdigit(peek(buf, size, i))) { printf("%c", consume(buf, size, &i)); }
+            printf(".  ");
+            consume(buf, size, &i); // Consume the period after the move number
+            consume(buf, size, &i); // Consume the space after the move number's period
+        } else if (is_move_text(buf, size, i)) {
+            while (!isspace(peek(buf, size, i))) {
+                printf("%c", consume(buf, size, &i));
+            }
+            printf("\t");
         } else if (isspace(c)) {
-            break;
+            consume(buf, size, &i);
         }
-        i++;
     }
+    // printf("[INFO] Done!\n");
 }
 
 int main(void)
 {
-    const char* file_path = "tests/test_pgn_without_comments.txt";
+    const char* file_path = "examples/pgn_without_comments.txt";
 
     FILE* fptr = fopen(file_path, "r");
     if (fptr == NULL) {
@@ -83,8 +131,10 @@ int main(void)
 
     char buf[BUF_SIZE] = { 0 };
     while (fgets(buf, BUF_SIZE, fptr)) {
-        parse_lines(buf, BUF_SIZE);
+        if (strncmp(buf, "quit", 4) == 0) break;
+        parse_lines(buf);
     }
 
+    printf("[INFO] Done!\n");
     return 0;
 }
