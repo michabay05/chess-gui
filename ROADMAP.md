@@ -8,14 +8,14 @@
 - [x] Piece
   - [x] Find pieces online
   - [x] Draw them centered in each square
-- [ ] Controls
+- [x] Controls
   - [x] Hightlight selected piece
   - [x] Hightlight preview possible moves
-  - [ ] Move piece
-    - [ ] Have a functioning method to make moves
-    - [ ] Highlight _legal_ target square for the piece
-    - [ ] When target square is clicked, move piece there
-- [ ] Evaluation bar from some engine
+  - [x] Move piece
+    - [x] Have a functioning method to make moves
+    - [x] Highlight _legal_ target square for the piece
+    - [x] When target square is clicked, move piece there
+- [x] Show Evaluation bar
 - [ ] Show list of moves played
 - [ ] Export
   - [ ] FEN
@@ -65,7 +65,8 @@
   - [ ] SAN - Short Algebraic notation
   - [ ] Coordinate notation
 - [ ] PGN
-  - [ ] Parse header section
-  - [ ] Parse move section
+  - [x] Parse header section
+  - [x] Parse move section (without comments)
+  - [ ] Parse move section (with comments)
 - [ ] UCI
   - [UCI commands notes](https://gist.github.com/aliostad/f4470274f39d29b788c1b09519e67372)
