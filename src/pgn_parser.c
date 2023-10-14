@@ -7,11 +7,11 @@
 #define BUF_SIZE 64 * 1024
 
 typedef enum {
-    PGN_NONE,
-    PGN_METADATA_KEY,
-    PGN_METADATA_VALUE,
-    PGN_MOVE,
-    PGN_COMMENT,
+    PGN_TK_NONE,
+    PGN_TK_METADATA_KEY,
+    PGN_TK_METADATA_VALUE,
+    PGN_TK_MOVE,
+    PGN_TK_COMMENT,
 } PGN_TokenKind;
 
 typedef struct {
@@ -119,18 +119,18 @@ void token_print(PGN_Token t)
 {
     const char* kind_str;
     switch (t.kind) {
-        case PGN_NONE:
+        case PGN_TK_NONE:
             return;
-        case PGN_METADATA_KEY:
+        case PGN_TK_METADATA_KEY:
             kind_str = "key";
             break;
-        case PGN_METADATA_VALUE:
+        case PGN_TK_METADATA_VALUE:
             kind_str = "value";
             break;
-        case PGN_MOVE:
+        case PGN_TK_MOVE:
             kind_str = "move";
             break;
-        case PGN_COMMENT:
+        case PGN_TK_COMMENT:
             kind_str = "comment";
             break;
     }
@@ -141,6 +141,33 @@ void token_reset(PGN_Token* t)
 {
     t->buf = NULL;
     t->kind = 0;
+}
+
+void consume_while_not_space(char** dest, char* buf, size_t size, size_t* i)
+{
+    while (!isspace(peek(buf, size, *i))) {
+        char c = consume(buf, size, i);
+        if (dest != NULL)
+            str_append_char(dest, c);
+    }
+}
+
+void consume_while_false(char** dest, char* buf, size_t size, size_t* i, char delimiter)
+{
+    while (peek(buf, size, *i) != delimiter) {
+        char c = consume(buf, size, i);
+        if (dest != NULL)
+            str_append_char(dest, c);
+    }
+}
+
+void consume_while_true(char** dest, char* buf, size_t size, size_t* i, char delimiter)
+{
+    while (peek(buf, size, *i) == delimiter) {
+        char c = consume(buf, size, i);
+        if (dest != NULL)
+            str_append_char(dest, c);
+    }
 }
 
 void parse_lines(char* buf, PGN_TokenList* tl)
@@ -156,21 +183,17 @@ void parse_lines(char* buf, PGN_TokenList* tl)
             // [KEY "VALUE"]
             // PGN meta data
             consume(buf, size, &i); // Consume [
-            // Consumes the entire word of the KEY
-            while (peek(buf, size, i) != ' ') {
-                str_append_char(&t.buf, consume(buf, size, &i));
-            }
-            t.kind = PGN_METADATA_KEY;
+
+            consume_while_false(&t.buf, buf, size, &i, ' ');
+            t.kind = PGN_TK_METADATA_KEY;
             token_append(tl, t);
             token_reset(&t);
 
             consume(buf, size, &i); // Consume ' '
             consume(buf, size, &i); // Consume '"'
 
-            while (peek(buf, size, i) != '"') {
-                str_append_char(&t.buf, consume(buf, size, &i));
-            }
-            t.kind = PGN_METADATA_VALUE;
+            consume_while_false(&t.buf, buf, size, &i, '"');
+            t.kind = PGN_TK_METADATA_VALUE;
             token_append(tl, t);
             token_reset(&t);
 
@@ -178,21 +201,17 @@ void parse_lines(char* buf, PGN_TokenList* tl)
             consume(buf, size, &i); // Consume the closing square bracket mark
         } else if (c == '{') {
             consume(buf, size, &i); // Consume '{'
-            while (peek(buf, size, i) != '}') {
-                str_append_char(&t.buf, consume(buf, size, &i));
-            }
-            t.kind = PGN_COMMENT;
+            consume_while_false(&t.buf, buf, size, &i, '}');
+            t.kind = PGN_TK_COMMENT;
             token_append(tl, t);
             token_reset(&t);
             consume(buf, size, &i); // Consume '}'
         } else if (is_move_number(buf, size, i)) {
-            while (peek(buf, size, i) != '.') { consume(buf, size, &i); }
-            while (peek(buf, size, i) == '.') { consume(buf, size, &i); }
+            consume_while_false(NULL, buf, size, &i, '.');
+            consume_while_true(NULL, buf, size, &i, '.');
         } else if (is_move_text(buf, size, i)) {
-            while (!isspace(peek(buf, size, i))) {
-                str_append_char(&t.buf, consume(buf, size, &i));
-            }
-            t.kind = PGN_MOVE;
+            consume_while_not_space(&t.buf, buf, size, &i);
+            t.kind = PGN_TK_MOVE;
             token_append(tl, t);
             token_reset(&t);
         } else if (isspace(c)) {
