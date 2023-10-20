@@ -1,39 +1,51 @@
-CC=gcc
-LIBS=-lraylib -lm
-CFLAGS=-Wall -Wextra -pedantic -std=c17 
+SRCDIR = src
+INCDIR = include
+VENDORDIR = include/vendor
+OBJDIR_DEBUG = obj/debug
+OBJDIR_RELEASE = obj/release
+BINDIR_DEBUG = bin/debug
+BINDIR_RELEASE = bin/release
 
-SRC=src
-SRCS=$(wildcard $(SRC)/*.c)
+COMP = gcc
+COMMON_COMPFLAGS = -Wall -Wextra -pedantic -std=c17 -I$(INCDIR) -I$(VENDORDIR)
+COMPFLAGS_DEBUG = -g
+COMPFLAGS_RELEASE = -O3
+LDFLAGS = -lraylib -lm
 
-INC=src vendor src/gui 
-HDRS=$(wildcard $(INC)/*.h)
+SOURCES = $(wildcard $(SRCDIR)/*.c)
+OBJECTS_DEBUG = $(patsubst $(SRCDIR)/%.c, $(OBJDIR_DEBUG)/%.o, $(SOURCES))
+OBJECTS_RELEASE = $(patsubst $(SRCDIR)/%.c, $(OBJDIR_RELEASE)/%.o, $(SOURCES))
+BIN_NAME = chess-gui
+BINARY_DEBUG = $(BINDIR_DEBUG)/$(BIN_NAME)
+BINARY_RELEASE = $(BINDIR_RELEASE)/$(BIN_NAME)
 
-OBJ=obj
-OBJS=$(patsubst $(SRC)/%.c,$(OBJ)/%.o,$(SRCS))
+.PHONY: all clean debug debug_setup release release_setup
 
-BIN_DIR=bin
-BIN=bin/chess_gui
+all: debug release
 
-.PHONY: all clean
+debug: debug_setup $(BINARY_DEBUG)
 
-all: $(BIN)
+debug_setup:
+	mkdir -p $(OBJDIR_DEBUG)
+	mkdir -p $(BINDIR_DEBUG)
 
-$(BIN): $(OBJS) $(OBJ) $(BIN_DIR)
-	$(CC) $(CFLAGS) $(OBJS) -o $@ $(LIBS)
+$(BINARY_DEBUG): $(OBJECTS_DEBUG)
+	$(COMP) $^ -o $@ $(LDFLAGS)
 
-$(OBJ)/%.o: $(SRC)/%.c $(OBJ)
-	$(CC) $(CFLAGS) -c $< -o $@
+$(OBJDIR_DEBUG)/%.o: $(SRCDIR)/%.c
+	$(COMP) $(COMMON_COMPFLAGS) $(COMPFLAGS_DEBUG) -c $< -o $@
 
-$(OBJ):
-	mkdir -p $@
+release: release_setup $(BINARY_RELEASE)
 
-$(BIN_DIR):
-	mkdir -p $@
+release_setup:
+	mkdir -p $(OBJDIR_RELEASE)
+	mkdir -p $(BINDIR_RELEASE)
+
+$(BINARY_RELEASE): $(OBJECTS_RELEASE)
+	$(COMP) $^ -o $@ $(LDFLAGS)
+
+$(OBJDIR_RELEASE)/%.o: $(SRCDIR)/%.c
+	$(COMP) $(COMMON_COMPFLAGS) $(COMPFLAGS_RELEASE) -c $< -o $@
 
 clean:
-	$(RM) -r $(OBJ)
-	$(RM) -r $(BIN_DIR)
-
-run:
-	$(MAKE) all
-	$(BIN)
+	rm -rf $(OBJDIR_DEBUG)/* $(OBJDIR_RELEASE)/* $(BINDIR_DEBUG)/* $(BINDIR_RELEASE)/*

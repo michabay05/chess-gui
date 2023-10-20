@@ -20,9 +20,9 @@ void parse_cmd_args(int argc, char **argv, Mode* mode) {
     }
 }
 
-#include "move_gen.h"
+#include "pgn.h"
 int test_main(void) {
-    return 0;
+    return pgn_main();
 }
 
 void init(void) { attack_init(); }

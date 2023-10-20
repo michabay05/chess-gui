@@ -1,28 +1,6 @@
-#include <ctype.h>
-#include <stdbool.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+#include "pgn.h"
 
 #define BUF_SIZE 64 * 1024
-
-typedef enum {
-    PGN_TK_NONE,
-    PGN_TK_METADATA_KEY,
-    PGN_TK_METADATA_VALUE,
-    PGN_TK_MOVE,
-    PGN_TK_COMMENT,
-} PGN_TokenKind;
-
-typedef struct {
-    char* buf;
-    PGN_TokenKind kind;
-} PGN_Token;
-
-typedef struct {
-    PGN_Token* tokens;
-    size_t count;
-} PGN_TokenList;
 
 #define peek(buf, size, ind) peek_ahead(buf, size, ind, 0)
 #define peek_next(buf, size, ind) peek_ahead(buf, size, ind, 1)
@@ -90,6 +68,8 @@ bool is_move_text(char* buf, size_t size, size_t ind)
 
 bool str_append_char(char** dest, char c)
 {
+    if (dest == NULL || c == '\0') return false;
+
     size_t size = *dest == NULL ? 0 : strlen(*dest);
     size_t new_size = size + 2; // + 2 for c and NUL 
     char* temp = (char*) malloc(new_size * sizeof(char));
@@ -104,14 +84,34 @@ bool str_append_char(char** dest, char c)
     return true;
 }
 
+bool str_append_str(char** dest, char* src)
+{
+    if (src == NULL || dest == NULL) return false;
+
+    size_t dest_size = *dest == NULL ? 0 : strlen(*dest);
+    size_t src_size = strlen(src);
+
+    size_t new_size = dest_size + src_size + 1;
+    char* temp = (char*) malloc(new_size * sizeof(char));
+    if (temp == NULL) {
+        return false;
+    }
+
+    memcpy(temp, *dest, dest_size);
+    memcpy(temp + dest_size, src, src_size);
+    temp[new_size - 1] = '\0';
+    *dest = temp;
+    return true;
+}
+
 void token_append(PGN_TokenList* tl, PGN_Token t)
 {
     tl->count++;
     tl->tokens = (PGN_Token*) realloc(tl->tokens, tl->count * sizeof(PGN_Token));
 
-    tl->tokens[tl->count - 1].buf = (char*) malloc(strlen(t.buf) * sizeof(char) + 1);
-    memcpy(tl->tokens[tl->count - 1].buf, t.buf, strlen(t.buf));
-    tl->tokens[tl->count - 1].buf[strlen(t.buf)] = '\0';
+    tl->tokens[tl->count - 1].lexeme = (char*) malloc(strlen(t.lexeme) * sizeof(char) + 1);
+    memcpy(tl->tokens[tl->count - 1].lexeme, t.lexeme, strlen(t.lexeme));
+    tl->tokens[tl->count - 1].lexeme[strlen(t.lexeme)] = '\0';
     tl->tokens[tl->count - 1].kind = t.kind;
 }
 
@@ -121,10 +121,10 @@ void token_print(PGN_Token t)
     switch (t.kind) {
         case PGN_TK_NONE:
             return;
-        case PGN_TK_METADATA_KEY:
+        case PGN_TK_TAG_KEY:
             kind_str = "key";
             break;
-        case PGN_TK_METADATA_VALUE:
+        case PGN_TK_TAG_VALUE:
             kind_str = "value";
             break;
         case PGN_TK_MOVE:
@@ -133,13 +133,16 @@ void token_print(PGN_Token t)
         case PGN_TK_COMMENT:
             kind_str = "comment";
             break;
+        case PGN_TK_GAME_OUTCOME:
+            kind_str = "outcome";
+            break;
     }
-    printf("[TOKEN: %7s] %s", kind_str, t.buf);
+    printf("[TOKEN: %7s] %s", kind_str, t.lexeme);
 }
 
 void token_reset(PGN_Token* t)
 {
-    t->buf = NULL;
+    t->lexeme = NULL;
     t->kind = 0;
 }
 
@@ -184,16 +187,16 @@ void parse_lines(char* buf, PGN_TokenList* tl)
             // PGN meta data
             consume(buf, size, &i); // Consume [
 
-            consume_while_false(&t.buf, buf, size, &i, ' ');
-            t.kind = PGN_TK_METADATA_KEY;
+            consume_while_false(&t.lexeme, buf, size, &i, ' ');
+            t.kind = PGN_TK_TAG_KEY;
             token_append(tl, t);
             token_reset(&t);
 
             consume(buf, size, &i); // Consume ' '
             consume(buf, size, &i); // Consume '"'
 
-            consume_while_false(&t.buf, buf, size, &i, '"');
-            t.kind = PGN_TK_METADATA_VALUE;
+            consume_while_false(&t.lexeme, buf, size, &i, '"');
+            t.kind = PGN_TK_TAG_VALUE;
             token_append(tl, t);
             token_reset(&t);
 
@@ -201,7 +204,7 @@ void parse_lines(char* buf, PGN_TokenList* tl)
             consume(buf, size, &i); // Consume the closing square bracket mark
         } else if (c == '{') {
             consume(buf, size, &i); // Consume '{'
-            consume_while_false(&t.buf, buf, size, &i, '}');
+            consume_while_false(&t.lexeme, buf, size, &i, '}');
             t.kind = PGN_TK_COMMENT;
             token_append(tl, t);
             token_reset(&t);
@@ -210,7 +213,7 @@ void parse_lines(char* buf, PGN_TokenList* tl)
             consume_while_false(NULL, buf, size, &i, '.');
             consume_while_true(NULL, buf, size, &i, '.');
         } else if (is_move_text(buf, size, i)) {
-            consume_while_not_space(&t.buf, buf, size, &i);
+            consume_while_not_space(&t.lexeme, buf, size, &i);
             t.kind = PGN_TK_MOVE;
             token_append(tl, t);
             token_reset(&t);
@@ -218,14 +221,69 @@ void parse_lines(char* buf, PGN_TokenList* tl)
             consume(buf, size, &i);
         }
     }
+}
+
+PGN_GameResult pgn_parse_result(char* lexeme)
+{
+    if (!strncmp(lexeme, "1-0", 3))
+        return PGN_GR_WHITE_WINS;
+    else if (!strncmp(lexeme, "0-1", 3))
+        return PGN_GR_BLACK_WINS;
+    else if (!strncmp(lexeme, "1/2-1/2", 3))
+        return PGN_GR_DRAW;
+    else
+        // @NOTE: an asterisk result '*' indicates that a
+        // game is still ongoing
+        return PGN_GR_ONGOING;
 
 }
 
-int main(void)
+void pgn_parse(PGN* pgn, const PGN_TokenList tl)
 {
-    //const char* file_path = "examples/fischer_v_spassky_modified.pgn";
+    size_t i;
+    for (i = 0; i < tl.count; i++) {
+        if (tl.tokens[i].kind != PGN_TK_TAG_KEY && tl.tokens[i].kind != PGN_TK_TAG_VALUE)
+            break;
+    }
+
+    char** dest;
+    for (size_t j = 0; j < (i - 1); j += 2) {
+        if (!strncmp(tl.tokens[j].lexeme, "result", 6)) {
+            pgn->result = pgn_parse_result(tl.tokens[j].lexeme);
+            continue;
+        }
+        if (!strncmp(tl.tokens[j].lexeme, "Event", 5)) {
+            dest = &pgn->event;
+        } else if (!strncmp(tl.tokens[j].lexeme, "Site", 4)) {
+            dest = &pgn->site;
+        } else if (!strncmp(tl.tokens[j].lexeme, "Date", 4)) {
+            dest = &pgn->date;
+        } else if (!strncmp(tl.tokens[j].lexeme, "Round", 5)) {
+            dest = &pgn->round;
+        } else if (!strncmp(tl.tokens[j].lexeme, "White", 5)) {
+            dest = &pgn->white;
+        } else if (!strncmp(tl.tokens[j].lexeme, "Black", 5)) {
+            dest = &pgn->black;
+        } else {
+            continue;
+        }
+        str_append_str(dest, tl.tokens[j + 1].lexeme);
+    }
+}
+
+void pgn_print(const PGN* const pgn)
+{
+    printf("Event: %s\n", pgn->event);
+    printf(" Site: %s\n", pgn->site);
+    printf(" Date: %s\n", pgn->date);
+    printf("Round: %s\n", pgn->round);
+    printf("White: %s\n", pgn->white);
+    printf("Black: %s\n", pgn->black);
+}
+
+int pgn_main(void)
+{
     const char* file_path = "examples/fischer_v_spassky.pgn";
-    // const char* file_path = "examples/without_comments.pgn";
 
     FILE* fptr = fopen(file_path, "r");
     if (fptr == NULL) {
@@ -240,11 +298,19 @@ int main(void)
         parse_lines(buf, &tl);
     }
 
+    tl.tokens[tl.count - 1].kind = PGN_TK_GAME_OUTCOME;
+
+#if 0
     for (size_t i = 0; i < tl.count; i++) {
         printf("%3ld. ", i + 1);
         token_print(tl.tokens[i]);
         printf("\n");
     }
+#endif
+
+    PGN pgn = { 0 };
+    pgn_parse(&pgn, tl);
+    pgn_print(&pgn);
 
     printf("[INFO] Done!\n");
     return 0;
