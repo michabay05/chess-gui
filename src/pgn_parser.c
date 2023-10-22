@@ -66,42 +66,31 @@ bool is_move_text(char* buf, size_t size, size_t ind)
     return false;
 }
 
-bool str_append_char(char** dest, char c)
-{
-    if (dest == NULL || c == '\0') return false;
-
-    size_t size = *dest == NULL ? 0 : strlen(*dest);
-    size_t new_size = size + 2; // + 2 for c and NUL 
-    char* temp = (char*) malloc(new_size * sizeof(char));
-    if (dest == NULL) {
-        return false;
-    }
-
-    memcpy(temp, *dest, size);
-    temp[new_size - 2] = c;
-    temp[new_size - 1] = '\0';
-    *dest = temp;
-    return true;
-}
-
-bool str_append_str(char** dest, char* src)
+bool str_n_append(char** dest, char* src, size_t size)
 {
     if (src == NULL || dest == NULL) return false;
 
     size_t dest_size = *dest == NULL ? 0 : strlen(*dest);
     size_t src_size = strlen(src);
 
-    size_t new_size = dest_size + src_size + 1;
+    if (src_size < size) return false;
+
+    size_t new_size = dest_size + size + 1;
     char* temp = (char*) malloc(new_size * sizeof(char));
     if (temp == NULL) {
         return false;
     }
 
     memcpy(temp, *dest, dest_size);
-    memcpy(temp + dest_size, src, src_size);
+    memcpy(temp + dest_size, src, size);
     temp[new_size - 1] = '\0';
     *dest = temp;
     return true;
+}
+
+bool str_append(char** dest, char* src)
+{
+    return str_n_append(dest, src, strlen(src));
 }
 
 void token_append(PGN_TokenList* tl, PGN_Token t)
@@ -146,35 +135,27 @@ void token_reset(PGN_Token* t)
     t->kind = 0;
 }
 
-void consume_while_not_space(char** dest, char* buf, size_t size, size_t* i)
-{
-    while (!isspace(peek(buf, size, *i))) {
-        char c = consume(buf, size, i);
-        if (dest != NULL)
-            str_append_char(dest, c);
+void consume_while(char** dest, char* buf, size_t size, size_t* i, bool (*filter_func)(char c)) {
+    size_t prev_ind = *i;
+    size_t word_len = 0;
+    while (filter_func(peek(buf, size, *i))) {
+        consume(buf, size, i);
+        word_len++;
     }
-}
-
-void consume_while_false(char** dest, char* buf, size_t size, size_t* i, char delimiter)
-{
-    while (peek(buf, size, *i) != delimiter) {
-        char c = consume(buf, size, i);
-        if (dest != NULL)
-            str_append_char(dest, c);
-    }
-}
-
-void consume_while_true(char** dest, char* buf, size_t size, size_t* i, char delimiter)
-{
-    while (peek(buf, size, *i) == delimiter) {
-        char c = consume(buf, size, i);
-        if (dest != NULL)
-            str_append_char(dest, c);
-    }
+    if (dest != NULL)
+        str_n_append(dest, buf + prev_ind, word_len);
 }
 
 void parse_lines(char* buf, PGN_TokenList* tl)
 {
+
+    bool is_period(char c)         { return c == '.'; }
+
+    bool is_not_quote(char c)      { return c != '"'; }
+    bool is_not_space(char c)      { return !isspace(c); }
+    bool is_not_right_curly(char c) { return c != '}'; }
+    bool is_not_period(char c)     { return c != '.'; }
+
     const size_t size = strlen(buf);
     if (buf == NULL || size == 0) return;
     
@@ -187,7 +168,7 @@ void parse_lines(char* buf, PGN_TokenList* tl)
             // PGN meta data
             consume(buf, size, &i); // Consume [
 
-            consume_while_false(&t.lexeme, buf, size, &i, ' ');
+            consume_while(&t.lexeme, buf, size, &i, &is_not_space);
             t.kind = PGN_TK_TAG_KEY;
             token_append(tl, t);
             token_reset(&t);
@@ -195,7 +176,7 @@ void parse_lines(char* buf, PGN_TokenList* tl)
             consume(buf, size, &i); // Consume ' '
             consume(buf, size, &i); // Consume '"'
 
-            consume_while_false(&t.lexeme, buf, size, &i, '"');
+            consume_while(&t.lexeme, buf, size, &i, &is_not_quote);
             t.kind = PGN_TK_TAG_VALUE;
             token_append(tl, t);
             token_reset(&t);
@@ -204,16 +185,17 @@ void parse_lines(char* buf, PGN_TokenList* tl)
             consume(buf, size, &i); // Consume the closing square bracket mark
         } else if (c == '{') {
             consume(buf, size, &i); // Consume '{'
-            consume_while_false(&t.lexeme, buf, size, &i, '}');
+
+            consume_while(&t.lexeme, buf, size, &i, &is_not_right_curly);
             t.kind = PGN_TK_COMMENT;
             token_append(tl, t);
             token_reset(&t);
             consume(buf, size, &i); // Consume '}'
         } else if (is_move_number(buf, size, i)) {
-            consume_while_false(NULL, buf, size, &i, '.');
-            consume_while_true(NULL, buf, size, &i, '.');
+            consume_while(NULL, buf, size, &i, &is_not_period);
+            consume_while(NULL, buf, size, &i, &is_period);
         } else if (is_move_text(buf, size, i)) {
-            consume_while_not_space(&t.lexeme, buf, size, &i);
+            consume_while(&t.lexeme, buf, size, &i, &is_not_space);
             t.kind = PGN_TK_MOVE;
             token_append(tl, t);
             token_reset(&t);
@@ -267,7 +249,7 @@ void pgn_parse(PGN* pgn, const PGN_TokenList tl)
         } else {
             continue;
         }
-        str_append_str(dest, tl.tokens[j + 1].lexeme);
+        str_append(dest, tl.tokens[j + 1].lexeme);
     }
 }
 
@@ -281,7 +263,7 @@ void pgn_print(const PGN* const pgn)
     printf("Black: %s\n", pgn->black);
 }
 
-int pgn_main(void)
+int main(void)
 {
     const char* file_path = "examples/fischer_v_spassky.pgn";
 
