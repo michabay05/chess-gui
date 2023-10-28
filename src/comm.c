@@ -7,6 +7,7 @@
 #include <unistd.h>
 
 #include "move.h"
+#include "str_parse.h"
 
 #define READ_END 0
 #define WRITE_END 1
@@ -136,63 +137,6 @@ void close_engine(Engine engine)
     close(engine.out_fd);
 }
 
-#define peek(buf, size, ind) peek_ahead(buf, size, ind, 0)
-#define peek_next(buf, size, ind) peek_ahead(buf, size, ind, 1)
-
-static bool is_at_end(size_t size, size_t ind)
-{
-    return ind >= size;
-}
-
-static char peek_ahead(char* buf, size_t size, size_t ind, size_t ahead)
-{
-    if (is_at_end(size, ind)) return '\0';
-    return buf[ind + ahead];
-}
-
-static char consume(char* buf, size_t size, size_t* ind)
-{
-    (*ind)++;
-    if (is_at_end(size, *ind)) return '\0';
-    char output = buf[(*ind) - 1];
-    return output;
-}
-
-
-static bool str_n_append(char** dest, char* src, size_t size)
-{
-    if (src == NULL || dest == NULL) return false;
-
-    size_t dest_size = *dest == NULL ? 0 : strlen(*dest);
-    size_t src_size = strlen(src);
-
-    if (src_size < size) return false;
-
-    size_t new_size = dest_size + size + 1;
-    char* temp = (char*) malloc(new_size * sizeof(char));
-    if (temp == NULL) {
-        return false;
-    }
-
-    memcpy(temp, *dest, dest_size);
-    memcpy(temp + dest_size, src, size);
-    temp[new_size - 1] = '\0';
-    *dest = temp;
-    return true;
-}
-
-static void consume_while(char** dest, char* buf, size_t size, size_t* i, bool (*filter_func)(char c)) {
-    size_t prev_ind = *i;
-    size_t word_len = 0;
-    while (filter_func(peek(buf, size, *i))) {
-        consume(buf, size, i);
-        word_len++;
-    }
-    if (dest != NULL)
-        str_n_append(dest, buf + prev_ind, word_len);
-}
-
-
 bool identify_info(char* info_key, InfoValueType* ivt)
 {
     char* match[] = { "depth", "score", "nodes", "time", "pv" };
@@ -294,7 +238,7 @@ int main(void)
 #if 0
     char* buf = "info depth 18 seldepth 23 multipv 1 score cp 35 nodes 366649 nps 282472 hashfull 143 tbhits 0 time 1298 pv e2e4 e7e5 g1f3 b8c6 d2d4 e5d4 f3d4 g8f6 d4c6 b7c6 f1d3 d7d5 e4e5 f6d7 e1g1 f8e7 f2f4 d7c5 c1e3 e8g8";
 #else
-    char* filepath = "engine-output.txt";
+    char* filepath = "engines/engine-output.txt";
     FILE* fp = fopen(filepath, "r");
     if (fp == NULL) {
         fprintf(stderr, "[ERROR] Failed to read '%s'.\n", filepath);
