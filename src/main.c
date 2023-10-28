@@ -20,11 +20,6 @@ void parse_cmd_args(int argc, char **argv, Mode* mode) {
     }
 }
 
-#include "pgn.h"
-int test_main(void) {
-    return pgn_main();
-}
-
 void init(void) { attack_init(); }
 
 int main(int argc, char *argv[]) {
@@ -41,7 +36,7 @@ int main(int argc, char *argv[]) {
         return 1;
         // TODO: Add term main();
     case DEBUG:
-        return test_main();
+        return 0;
     };
     return 0;
 }

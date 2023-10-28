@@ -1,22 +1,47 @@
+#include <ctype.h>
+#include <stdbool.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
 #include "pgn.h"
 
 #define BUF_SIZE 64 * 1024
 
+typedef enum {
+    PGN_TK_NONE,
+    PGN_TK_TAG_KEY,
+    PGN_TK_TAG_VALUE,
+    PGN_TK_MOVE,
+    PGN_TK_COMMENT,
+    PGN_TK_GAME_OUTCOME,
+} PGN_TokenKind;
+
+typedef struct {
+    char* lexeme;
+    PGN_TokenKind kind;
+} PGN_Token;
+
+typedef struct {
+    PGN_Token* tokens;
+    size_t count;
+} PGN_TokenList;
+
 #define peek(buf, size, ind) peek_ahead(buf, size, ind, 0)
 #define peek_next(buf, size, ind) peek_ahead(buf, size, ind, 1)
 
-bool is_at_end(size_t size, size_t ind)
+static bool is_at_end(size_t size, size_t ind)
 {
     return ind >= size;
 }
 
-char peek_ahead(char* buf, size_t size, size_t ind, size_t ahead)
+static char peek_ahead(char* buf, size_t size, size_t ind, size_t ahead)
 {
     if (is_at_end(size, ind)) return '\0';
     return buf[ind + ahead];
 }
 
-char consume(char* buf, size_t size, size_t* ind)
+static char consume(char* buf, size_t size, size_t* ind)
 {
     (*ind)++;
     if (is_at_end(size, *ind)) return '\0';
@@ -24,49 +49,7 @@ char consume(char* buf, size_t size, size_t* ind)
     return output;
 }
 
-bool is_move_number(char* buf, size_t size, size_t ind)
-{
-    size_t i = ind;
-    char c;
-    while ((c = peek(buf, size, i)) != '.') {
-        if (!isdigit(c)) return false;
-        consume(buf, size, &i);
-    }
-    return true;
-}
-
-bool is_valid_move_letter(char c)
-{
-    if (c == '\0') return false;
-
-    char* accepted_chars[5] = {
-        "NBRQK",      // Piece types
-        "abcdefgh",   // file letters
-        "12345678",   // rank numbers
-        "O0",         // Castling letter
-        "-+#",        // Other symbols
-    };
-    for (int i = 0; i < 5; i++) {
-        if (strchr(accepted_chars[i], c) != NULL) return true;
-    }
-
-    return false;
-}
-
-bool is_move_text(char* buf, size_t size, size_t ind)
-{
-    size_t i = ind;
-    char c;
-    while (c != '\0' && !isspace(c)) {
-        if (is_valid_move_letter(c)) return true;
-        else consume(buf, size, &i);
-
-        c = peek(buf, size, i);
-    }
-    return false;
-}
-
-bool str_n_append(char** dest, char* src, size_t size)
+static bool str_n_append(char** dest, char* src, size_t size)
 {
     if (src == NULL || dest == NULL) return false;
 
@@ -88,12 +71,65 @@ bool str_n_append(char** dest, char* src, size_t size)
     return true;
 }
 
-bool str_append(char** dest, char* src)
+static bool str_append(char** dest, char* src)
 {
     return str_n_append(dest, src, strlen(src));
 }
 
-void token_append(PGN_TokenList* tl, PGN_Token t)
+static void consume_while(char** dest, char* buf, size_t size, size_t* i, bool (*filter_func)(char c)) {
+    size_t prev_ind = *i;
+    size_t word_len = 0;
+    while (filter_func(peek(buf, size, *i))) {
+        consume(buf, size, i);
+        word_len++;
+    }
+    if (dest != NULL)
+        str_n_append(dest, buf + prev_ind, word_len);
+}
+
+static bool is_move_number(char* buf, size_t size, size_t ind)
+{
+    size_t i = ind;
+    char c;
+    while ((c = peek(buf, size, i)) != '.') {
+        if (!isdigit(c)) return false;
+        consume(buf, size, &i);
+    }
+    return true;
+}
+
+static bool is_valid_move_letter(char c)
+{
+    if (c == '\0') return false;
+
+    char* accepted_chars[5] = {
+        "NBRQK",      // Piece types
+        "abcdefgh",   // file letters
+        "12345678",   // rank numbers
+        "O0",         // Castling letter
+        "-+#",        // Other symbols
+    };
+    for (int i = 0; i < 5; i++) {
+        if (strchr(accepted_chars[i], c) != NULL) return true;
+    }
+
+    return false;
+}
+
+static bool is_move_text(char* buf, size_t size, size_t ind)
+{
+    size_t i = ind;
+    char c;
+    while (c != '\0' && !isspace(c)) {
+        if (is_valid_move_letter(c)) return true;
+        else consume(buf, size, &i);
+
+        c = peek(buf, size, i);
+    }
+    return false;
+}
+
+static void token_append(PGN_TokenList* tl, PGN_Token t)
 {
     tl->count++;
     tl->tokens = (PGN_Token*) realloc(tl->tokens, tl->count * sizeof(PGN_Token));
@@ -104,7 +140,7 @@ void token_append(PGN_TokenList* tl, PGN_Token t)
     tl->tokens[tl->count - 1].kind = t.kind;
 }
 
-void token_print(PGN_Token t)
+static void token_print(PGN_Token t)
 {
     const char* kind_str;
     switch (t.kind) {
@@ -129,24 +165,13 @@ void token_print(PGN_Token t)
     printf("[TOKEN: %7s] %s", kind_str, t.lexeme);
 }
 
-void token_reset(PGN_Token* t)
+static void token_reset(PGN_Token* t)
 {
     t->lexeme = NULL;
     t->kind = 0;
 }
 
-void consume_while(char** dest, char* buf, size_t size, size_t* i, bool (*filter_func)(char c)) {
-    size_t prev_ind = *i;
-    size_t word_len = 0;
-    while (filter_func(peek(buf, size, *i))) {
-        consume(buf, size, i);
-        word_len++;
-    }
-    if (dest != NULL)
-        str_n_append(dest, buf + prev_ind, word_len);
-}
-
-void parse_lines(char* buf, PGN_TokenList* tl)
+static void parse_lines(char* buf, PGN_TokenList* tl)
 {
 
     bool is_period(char c)         { return c == '.'; }
@@ -205,7 +230,7 @@ void parse_lines(char* buf, PGN_TokenList* tl)
     }
 }
 
-PGN_GameResult pgn_parse_result(char* lexeme)
+static PGN_GameResult pgn_parse_result(char* lexeme)
 {
     if (!strncmp(lexeme, "1-0", 3))
         return PGN_GR_WHITE_WINS;
@@ -220,7 +245,7 @@ PGN_GameResult pgn_parse_result(char* lexeme)
 
 }
 
-void pgn_parse(PGN* pgn, const PGN_TokenList tl)
+static void pgn_parse(PGN* pgn, const PGN_TokenList tl)
 {
     size_t i;
     for (i = 0; i < tl.count; i++) {
@@ -253,6 +278,7 @@ void pgn_parse(PGN* pgn, const PGN_TokenList tl)
     }
 }
 
+
 void pgn_print(const PGN* const pgn)
 {
     printf("Event: %s\n", pgn->event);
@@ -263,14 +289,12 @@ void pgn_print(const PGN* const pgn)
     printf("Black: %s\n", pgn->black);
 }
 
-int main(void)
+bool read_pgn(char* filepath, PGN* pgn)
 {
-    const char* file_path = "examples/fischer_v_spassky.pgn";
-
-    FILE* fptr = fopen(file_path, "r");
+    FILE* fptr = fopen(filepath, "r");
     if (fptr == NULL) {
-        fprintf(stderr, "[ERROR] Failed to open '%s'.\n", file_path);
-        return 1;
+        fprintf(stderr, "[ERROR] Failed to open '%s'.\n", filepath);
+        return false;
     }
 
     char buf[BUF_SIZE] = { 0 };
@@ -281,19 +305,7 @@ int main(void)
     }
 
     tl.tokens[tl.count - 1].kind = PGN_TK_GAME_OUTCOME;
+    pgn_parse(pgn, tl);
 
-#if 0
-    for (size_t i = 0; i < tl.count; i++) {
-        printf("%3ld. ", i + 1);
-        token_print(tl.tokens[i]);
-        printf("\n");
-    }
-#endif
-
-    PGN pgn = { 0 };
-    pgn_parse(&pgn, tl);
-    pgn_print(&pgn);
-
-    printf("[INFO] Done!\n");
-    return 0;
+    return true;
 }

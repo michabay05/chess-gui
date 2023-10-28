@@ -200,7 +200,7 @@ int gui_main(void)
     game.font[0] = LoadFontEx("assets/font/Rubik-Regular.ttf", 30, NULL, 0);
     game.font[1] = LoadFontEx("assets/font/Rubik-Bold.ttf", 30, NULL, 0);
     for (int i = 0; i < 2; i++) SetTextureFilter(game.font[i].texture, TEXTURE_FILTER_BILINEAR);
-    game.fptr = fopen("moves.txt", "w");
+    game.fptr = fopen(NULL, "w");
 
     Vector2 current_pos = { 0 };
     float eval = 0;
