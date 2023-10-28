@@ -15,8 +15,11 @@
     - [x] Have a functioning method to make moves
     - [x] Highlight _legal_ target square for the piece
     - [x] When target square is clicked, move piece there
-- [x] Show Evaluation bar
-- [ ] Show list of moves played
+- [ ] Evaluation bar
+    - [ ] Get evaluation from engine
+    - [ ] Display evaluation from engine
+- [ ] Move list
+    - [ ] Display move list
 - [ ] Export
   - [ ] FEN
   - [ ] PGN
@@ -55,18 +58,20 @@
 ## Parsing
 
 - [x] FEN
-  - [x] Parse piece placement
-  - [x] Parse side to move
-  - [x] Parse castling rights
-  - [x] Parse enpassant square
-  - [x] Parse half moves
-  - [x] Parse full moves
-- [ ] Move notations
-  - [ ] SAN - Short Algebraic notation
-  - [ ] Coordinate notation
+    - [x] Parse piece placement
+    - [x] Parse side to move
+    - [x] Parse castling rights
+    - [x] Parse enpassant square
+    - [x] Parse half moves
+    - [x] Parse full moves
 - [ ] PGN
-  - [x] Parse header section
-  - [x] Parse move section (without comments)
-  - [x] Parse move section (with comments)
+    - [x] Parse header section
+    - [x] Parse move section (without comments)
+    - [x] Parse move section (with comments)
+    - [ ] Parse move notations (SAN - Short Algebraic notation to Coordinate notation)
 - [ ] UCI
-  - [UCI commands notes](https://gist.github.com/aliostad/f4470274f39d29b788c1b09519e67372)
+    - [ ] Set up communication between gui and engine process
+        - [x] Linux - pipes
+        - [ ] Window - ??
+    - [ ] Parse UCI commands from engine
+    - [UCI commands notes](https://gist.github.com/aliostad/f4470274f39d29b788c1b09519e67372)
