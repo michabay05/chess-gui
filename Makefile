@@ -8,7 +8,7 @@ BINDIR_RELEASE = bin/release
 
 COMP = gcc
 COMMON_COMPFLAGS = -Wall -Wextra -pedantic -std=c17 -I$(INCDIR) -I$(VENDORDIR)
-COMPFLAGS_DEBUG = -g
+COMPFLAGS_DEBUG = -ggdb
 COMPFLAGS_RELEASE = -O3
 LDFLAGS = -lraylib -lm
 
