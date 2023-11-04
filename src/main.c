@@ -1,11 +1,10 @@
-#include "bitboard.h"
-#include "board.h"
-#include "fen.h"
-#include "gui_defs.h"
-#include "move.h"
-#include "precalculate.h"
-
+#include <stdbool.h>
+#include <stdio.h>
 #include <string.h>
+
+#include "precalculate.h"
+#include "gui_defs.h"
+#include "pgn.h"
 
 typedef enum { GUI, TERM, DEBUG } Mode;
 
@@ -25,7 +24,7 @@ void init(void) { attack_init(); }
 int main(int argc, char *argv[]) {
     init();
     // GUI is the default mode
-    Mode mode = GUI;
+    Mode mode = DEBUG;
     parse_cmd_args(argc, argv, &mode);
     switch (mode) {
     case GUI:
@@ -36,7 +35,8 @@ int main(int argc, char *argv[]) {
         return 1;
         // TODO: Add term main();
     case DEBUG:
-        return 0;
+        return pgn_main();
+        // return 0;
     };
     return 0;
 }
