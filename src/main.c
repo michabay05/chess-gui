@@ -6,16 +6,16 @@
 #include "gui_defs.h"
 #include "pgn.h"
 
-typedef enum { GUI, TERM, DEBUG } Mode;
+typedef enum { MODE_GUI, MODE_TERM, MODE_DEBUG } Mode;
 
 void parse_cmd_args(int argc, char **argv, Mode* mode) {
     if (argc >= 2) {
         if (!strcmp(argv[1], "GUI"))
-            *mode = GUI;
+            *mode = MODE_GUI;
         else if (!strcmp(argv[1], "Term"))
-            *mode = TERM;
+            *mode = MODE_TERM;
         else if (!strcmp(argv[1], "Debug"))
-            *mode = DEBUG;
+            *mode = MODE_DEBUG;
     }
 }
 
@@ -24,17 +24,17 @@ void init(void) { attack_init(); }
 int main(int argc, char *argv[]) {
     init();
     // GUI is the default mode
-    Mode mode = GUI;
+    Mode mode = MODE_GUI;
     parse_cmd_args(argc, argv, &mode);
     switch (mode) {
-    case GUI:
+    case MODE_GUI:
         gui_main();
         break;
-    case TERM:
+    case MODE_TERM:
         printf("********** TODO: Terminal mode is still not implemented.\n");
         return 1;
         // TODO: Add term main();
-    case DEBUG:
+    case MODE_DEBUG:
         return pgn_main();
         // return 0;
     };
