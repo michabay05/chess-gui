@@ -24,7 +24,7 @@ void init(void) { attack_init(); }
 int main(int argc, char *argv[]) {
     init();
     // GUI is the default mode
-    Mode mode = DEBUG;
+    Mode mode = GUI;
     parse_cmd_args(argc, argv, &mode);
     switch (mode) {
     case GUI:
