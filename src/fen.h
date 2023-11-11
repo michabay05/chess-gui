@@ -11,5 +11,5 @@ typedef struct {
   int half_moves;
 } FENInfo;
 
-FENInfo parse_fen(char *fen);
+FENInfo parse_fen(const char *fen);
 void fen_info_print(FENInfo *fen);

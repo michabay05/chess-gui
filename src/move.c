@@ -70,7 +70,7 @@ Move move_parse(char *move_str, Piece piece, bool is_capture, bool is_two_square
                 bool is_enpassant, bool is_castling) {
     int source = SQ(move_str[1] - '0', move_str[0] - 'a');
     int target = SQ(move_str[3] - '0', move_str[2] - 'a');
-    Piece promoted;
+    Piece promoted = E;
     if (move_str && (move_str[4] >= 'a' && move_str[4] <= 'z')) {
         switch (move_str[4]) {
         case 'Q':

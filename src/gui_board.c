@@ -115,13 +115,53 @@ static void gui_board_update_preview(GUI_Board* gb)
     }
 }
 
-void gui_board_init(GUI_Board *gb) {
+bool is_draw_by_insufficient_material(GUI_Board* gb)
+{
+    (void) gb;
+    // TODO: implement this function
+
+    // List of endgames drawn due to insufficient material
+    // -> K  vs k
+    // -> KN vs kn
+    // -> K  vs kn
+    // -> K  vs k
+    // -> KB vs kb
+    // -> KB vs k
+    // -> K  vs kb
+
+    return false;
+}
+
+void update_game_state(GUI_Board* gb)
+{
+    MoveList legal = { 0 };
+    movelist_legal(&legal, &gb->board);
+    if (legal.count == 0) {
+        PieceColor c = gb->board.state.side;
+        gb->board.state.side = c ^ 1;
+        if (board_is_in_check(&gb->board))
+            gb->state = GS_CHECKMATE;
+        else
+            gb->state = GS_DRAW_STALEMATE;
+        gb->board.state.side = c;
+    } else if (is_draw_by_insufficient_material(gb)) {
+        gb->state = GS_DRAW_INSUFF_MAT;
+    } else {
+        gb->state = GS_ONGOING;
+    }
+}
+
+void gui_board_init(GUI_Board *gb, const char* fen_str) {
     gb->board = (Board){0};
+    FENInfo fen = parse_fen(fen_str);
+    board_set_from_fen(&gb->board, fen);
+
     gb->is_promotion = false;
     gb->promoted_choice = E;
     gb->selected = noSq;
     gb->target = noSq;
     gb->preview = 0ULL;
+    update_game_state(gb);
 }
 
 void gui_board_update(GUI_Board *gb, FILE* record_fptr, Rectangle sec) {
@@ -129,4 +169,5 @@ void gui_board_update(GUI_Board *gb, FILE* record_fptr, Rectangle sec) {
     gui_board_update_preview(gb);
     gui_board_set_target(gb, sec);
     gui_board_make_move(gb, record_fptr);
+    update_game_state(gb);
 }

@@ -1,42 +1,44 @@
-#include "board.h"
 #include "fen.h"
 #include "gui_defs.h"
 
 #include "raymath.h"
 
-void draw_board(const Game* const game, Rectangle sec)
+#include <string.h>
+
+void draw_board(const GUI_Board* const gb, Rectangle sec, Font font)
 {
     Color sq_clr, opp_clr;
+    const float SQ_SIZE = fminf(sec.width, sec.height) / 8.f;
+    const float COORD_TEXT_SIZE = font.baseSize * (0.001f * sec.width);
     for (int r = 0; r < 8; r++) {
         for (int f = 0; f < 8; f++) {
             sq_clr = SQCLR(r, f) ? LIGHT_CLR : DARK_CLR;
             opp_clr = SQCLR(r, f) ? DARK_CLR : LIGHT_CLR;
-            if ((int)game->gb.selected == SQ(r, f) && pos_get_piece(game->gb.board.pos, game->gb.selected) != E)
+            if ((int)gb->selected == SQ(r, f) && pos_get_piece(gb->board.pos, gb->selected) != E)
                 sq_clr = ColorAlphaBlend(sq_clr, SELECTED_COLOR, WHITE);
-            if (get_bit(game->gb.preview, SQ(r, f)))
+            if (get_bit(gb->preview, SQ(r, f)))
                 sq_clr = ColorAlphaBlend(sq_clr, PREVIEW_COLOR, WHITE);
 
             DrawRectangleV(
-                (Vector2) {sec.x + f * sec.width / 8.f, sec.y + r * sec.height / 8.f }, 
-                (Vector2) {sec.width / 8.f, sec.height / 8.f},
+                (Vector2) {sec.x + f * SQ_SIZE, sec.y + r * SQ_SIZE }, 
+                Vector2Scale(Vector2One(), SQ_SIZE),
                 sq_clr
             );
             if (r == 7) {
-                DrawTextEx(game->font[1], 
+                DrawTextEx(font, 
                            TextFormat("%c", 'a' + f), 
                            (Vector2) {
-                             sec.x + f * (sec.width / 8.f) + (sec.width / 8.f) - (2.5f * 0.01f * sec.width),
-                             sec.y + 0.96f * sec.height
+                           sec.x + f * SQ_SIZE + SQ_SIZE - (2.5f * 0.01f * sec.width),
+                           sec.y + 0.96f * sec.height
                            },
-                           game->font[1].baseSize * 0.55f, 0, opp_clr);
+                           COORD_TEXT_SIZE, 0, opp_clr);
             }
         }
-        DrawTextEx(game->font[1], 
+        DrawTextEx(font, 
                    TextFormat("%d", 8 - r), 
-                   (Vector2) { sec.x + 0.01 * sec.width, sec.y + r * (sec.height / 8.f) + 0.01 * sec.height },
-                   game->font[1].baseSize * 0.55f, 0, sq_clr);
+                   (Vector2) { sec.x + 0.01 * sec.width, sec.y + r * SQ_SIZE + 0.01 * sec.height },
+                   COORD_TEXT_SIZE, 0, sq_clr);
     }
-    DrawRectangleLines(sec.x, sec.y, sec.width, sec.height, RED);
 }
 
 void draw_piece(Texture2D *tex, Piece piece, int row, int col, Rectangle sec)
@@ -50,7 +52,7 @@ void draw_piece(Texture2D *tex, Piece piece, int row, int col, Rectangle sec)
     int type = piece;
 
     const float SCALE = 0.95; // MAGIC NUMBER I CHOSE BECAUSE IT LOOKS GOOD
-    const float SQ_SIZE = sec.width / 8.f;
+    const float SQ_SIZE = fminf(sec.width, sec.height) / 8.f;
     float texture_dim[2] = {SQ_SIZE * SCALE, SQ_SIZE * SCALE};
     float pos[2] = {
         sec.x + col * SQ_SIZE + ((SQ_SIZE - texture_dim[0]) / 2.0f),
@@ -76,8 +78,8 @@ void draw_promotion_options(Texture* tex, bool is_white, Rectangle sec)
 
     SetTextureFilter(*tex, TEXTURE_FILTER_BILINEAR);
     for (int i = 0; i < 4; i++) {
-        float frame_width = tex->width / 6.0f;   // INDEX FROM ALL PIECE TYPES
-        float frame_height = tex->height / 2.0f; // INDEX FOR WHITE OR BLACK
+        float frame_width = tex->width / 6.0f;   // Index from all piece types
+        float frame_height = tex->height / 2.0f; // Index for white or black
         int color = is_white;
         int type = i + 1;
 
@@ -85,14 +87,9 @@ void draw_promotion_options(Texture* tex, bool is_white, Rectangle sec)
         const float SQ_SIZE = rect_size.x * 0.25f;
         float texture_dim[2] = {SQ_SIZE * SCALE, SQ_SIZE * SCALE};
         float pos[2] = { center.x + i * SQ_SIZE + ((SQ_SIZE - texture_dim[0]) / 2.0f), center.y };
-        /* DrawRectangleV(
-            (Vector2) { center.x + i * SQ_SIZE, center.y },
-            (Vector2) { SQ_SIZE, rect_size.y },
-            (Color) { 200, 0, 0, 50 }
-        ); */
         DrawTexturePro(*tex,
-                    (Rectangle){type * frame_width, color * frame_height, frame_width, frame_height},
-                    (Rectangle){pos[0], pos[1], texture_dim[0], texture_dim[1]}, (Vector2){0, 0}, 0, WHITE);
+                       (Rectangle){type * frame_width, color * frame_height, frame_width, frame_height},
+                       (Rectangle){pos[0], pos[1], texture_dim[0], texture_dim[1]}, (Vector2){0, 0}, 0, WHITE);
     }
 }
 
@@ -110,13 +107,16 @@ void choose_promotion_piece(GUI_Board* gb, Rectangle sec)
         gb->promoted_choice = (int)(mouse_pos.x / (rect_size.x / 4.f)) + 1;
         if (gb->board.state.side == DARK) gb->promoted_choice += 6;
         gb->is_promotion = false;
-   }
+    }
 }
 
 void draw_eval_bar(Font font, float eval, Rectangle sec)
 {
+    // Function used:
+    //   f(x) = (0.1443 * sqrt(|x|)) + 0.5
+    //      where x = eval
     const float MAGIC_FACTOR = 0.1443f;
-    float scale = sqrt(fabsf(eval)) * MAGIC_FACTOR;
+    float scale = sqrtf(fabsf(eval)) * MAGIC_FACTOR;
     scale *= eval < 0 ? 1 : -1;
     scale += 0.5;
 
@@ -132,14 +132,6 @@ void draw_eval_bar(Font font, float eval, Rectangle sec)
         (Vector2) { sec.x, sec.y + sec.height * scale },
         (Vector2) { sec.width, sec.height * (1 - scale) },
         white
-    );
-
-    DrawRectangleLines(
-        sec.x,
-        sec.y,
-        sec.width,
-        sec.height,
-        BLUE
     );
 
     const char* text = TextFormat("%.1f", fabsf(eval));
@@ -160,126 +152,124 @@ void draw_eval_bar(Font font, float eval, Rectangle sec)
     DrawTextEx(font, text, text_pos, font_size, 0, text_color);
 }
 
-void draw_moves_list(Rectangle sec)
+void update_board_section(GUI* gui, GUI_Board* gb, Rectangle sec)
 {
-    DrawRectangleLines(
-        sec.x,
-        sec.y,
-        sec.width,
-        sec.height,
-        GREEN
+    float horz_padding = sec.width * 0.01f;
+    float vert_padding = sec.height * 0.03f;
+
+    // EVALUATION BAR
+    const float MIN_SIDE_LEN = fminf(sec.width, sec.height);
+    const float EVAL_BAR_HEIGHT = MIN_SIDE_LEN - (2 * vert_padding);
+    gui->eval_boundary = (Rectangle) {
+        .x = horz_padding + ((2 * horz_padding) + (sec.width * 0.05f)) / 2,
+        .y = vert_padding + (((sec.height - vert_padding) / 2) - (EVAL_BAR_HEIGHT / 2)),
+        .width = sec.width * 0.05f,
+        .height = EVAL_BAR_HEIGHT,
+    };
+
+    // BOARD
+    const float SQ_AREA = fminf(
+        sec.width - (gui->eval_boundary.x + gui->eval_boundary.width) - (2 * horz_padding),
+        gui->eval_boundary.height
     );
+
+    float eval_and_pad = gui->eval_boundary.x + gui->eval_boundary.width + horz_padding;
+    gui->board_boundary = (Rectangle) {
+        .x = eval_and_pad + (((sec.width - eval_and_pad) / 2) - (SQ_AREA / 2)),
+        .y = gui->eval_boundary.y,
+        .width = SQ_AREA,
+        .height = SQ_AREA,
+    };
+
+    if (gb->is_promotion)
+        choose_promotion_piece(gb, gui->board_boundary);
+    gui_board_update(gb, NULL, gui->board_boundary);
 }
 
-void draw_info(Rectangle sec)
+
+void draw_board_section(const GUI* const gui, const GUI_Board* const gb, Texture piece_tex, Font font)
 {
-    DrawRectangleLines(
-        sec.x,
-        sec.y,
-        sec.width,
-        sec.height,
-        WHITE
-    );
+    if (gui->eval_enabled) {
+        draw_eval_bar(font, gui->eval, gui->eval_boundary);
+        DrawRectangleLinesEx(gui->eval_boundary, 1.f, MAROON);
+    }
+
+    // BOARD
+    draw_board(gb, gui->board_boundary, font);
+    DrawRectangleLinesEx(gui->board_boundary, 1.f, DARKBLUE);
+
+    for (int i = 0; i < 64; i++) {
+        draw_piece(&piece_tex, pos_get_piece(gb->board.pos, i), ROW(i), COL(i), gui->board_boundary);
+    }
+    if (gb->is_promotion) {
+        draw_promotion_options(&piece_tex, gb->board.state.side, gui->board_boundary);
+    }
+}
+
+void draw_engine_section(Font font, Rectangle sec)
+{
+    (void) font;
+    (void) sec;
 }
 
 int gui_main(void)
 {
     SetConfigFlags(FLAG_WINDOW_RESIZABLE);
     InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "Chess GUI");
+    SetWindowMinSize(SCREEN_WIDTH, SCREEN_HEIGHT);
     SetExitKey(KEY_Q);
     SetTargetFPS(30);
 
-    Texture2D tex = LoadTexture("assets/neo-pieces-spritesheet.png");
-    
+    GUI gui = { 0 };
+    gui.eval_enabled = true;
+    GUI_Board gb = { 0 };
     // STARTING_POS = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
-    FENInfo fen = parse_fen("8/8/1k6/8/p3K3/8/8/8 w - - 0 1");
-    Game game = { 0 };
-    gui_board_init(&game.gb);
-    board_set_from_fen(&game.gb.board, fen);
+    gui_board_init(&gb, "8/8/1k6/8/p3K3/8/8/8 w - - 0 1");
 
-    game.font[0] = LoadFontEx("assets/font/Rubik-Regular.ttf", 30, NULL, 0);
-    game.font[1] = LoadFontEx("assets/font/Rubik-Bold.ttf", 30, NULL, 0);
-    for (int i = 0; i < 2; i++) SetTextureFilter(game.font[i].texture, TEXTURE_FILTER_BILINEAR);
-    game.fptr = fopen(NULL, "w");
+    Texture2D piece_tex = LoadTexture("assets/neo-pieces-spritesheet.png");
 
-    Vector2 current_pos = { 0 };
-    float eval = 0;
-    float time = 0;
-    int multiplier = 1;
+    Font primary_font = LoadFontEx("assets/font/Rubik-Regular.ttf", 30, NULL, 0);
+    Font bold_font = LoadFontEx("assets/font/Rubik-Bold.ttf", 30, NULL, 0);
 
+    Rectangle board_boundary = { 0 };
+    Rectangle engine_boundary = { 0 };
     while (!WindowShouldClose()) {
-        float horz_padding = GetRenderWidth() * 0.01f;
-        float vert_padding = GetRenderHeight() * 0.03f;
-
-        float eval_vert_size = fmin(0.6 * GetRenderWidth(), 0.95 * GetRenderHeight());
-        game.sections[SECTION_EVAL_BAR] = (Rectangle) {
-            .x = horz_padding,
-            .y = vert_padding,
-            .width = GetRenderWidth() * 0.03f,
-            .height = eval_vert_size
-        };
-        current_pos.x = game.sections[SECTION_EVAL_BAR].x + game.sections[SECTION_EVAL_BAR].width;
-        current_pos.y = game.sections[SECTION_EVAL_BAR].y;
-
-        float squares_area = fmin(0.6 * GetRenderWidth(), 0.95 * GetRenderHeight());
-        game.sections[SECTION_BOARD] = (Rectangle) {
-            .x = current_pos.x + horz_padding,
-            .y = current_pos.y,
-            .width = squares_area,
-            .height = squares_area,
-        };
-        current_pos.x = game.sections[SECTION_BOARD].x + game.sections[SECTION_BOARD].width;
-        current_pos.y = game.sections[SECTION_BOARD].y;
-
-        game.sections[SECTION_MOVES_LIST] = (Rectangle) {
-            .x = current_pos.x + horz_padding,
-            .y = current_pos.y,
-            .width = GetRenderWidth() - (current_pos.x + 2 * horz_padding),
-            .height = GetRenderHeight() * 0.6f,
-        };
-        current_pos.y = game.sections[SECTION_MOVES_LIST].y + game.sections[SECTION_MOVES_LIST].height;
-
-        game.sections[SECTION_INFO] = (Rectangle) {
-            .x = current_pos.x + horz_padding,
-            .y = current_pos.y + vert_padding,
-            .width = GetRenderWidth() - (current_pos.x + 2 * horz_padding),
-            .height = GetRenderHeight() - (current_pos.y + 2 * vert_padding)
+        board_boundary = (Rectangle) {
+            .x = 0,
+            .y = 0,
+            .width = GetRenderWidth() * 0.6f,
+            .height = GetRenderHeight(),
         };
 
-        if (game.gb.is_promotion)
-            choose_promotion_piece(&game.gb, game.sections[SECTION_BOARD]);
-
-        gui_board_update(&game.gb, game.fptr, game.sections[SECTION_BOARD]);
-
-        time += GetFrameTime();
-        if (time > 0.01f) {
-            eval += 0.05f * multiplier;
-            time = 0;
+        engine_boundary = (Rectangle) {
+            .x = board_boundary.x + board_boundary.width,
+            .y = 0,
+            .width = GetRenderWidth() * 0.4f,
+            .height = GetRenderHeight(),
+        };
+        {
+            update_board_section(&gui, &gb, board_boundary);
         }
-        if (fabsf(eval) > 11) multiplier *= -1;
 
         BeginDrawing();
         {
             ClearBackground(BACKGROUND);
 
-            draw_eval_bar(game.font[1], eval, game.sections[SECTION_EVAL_BAR]);
-            draw_board(&game, game.sections[SECTION_BOARD]);
-            for (int i = 0; i < 64; i++) {
-                draw_piece(&tex, pos_get_piece(game.gb.board.pos, i), ROW(i), COL(i), game.sections[SECTION_BOARD]);
-            }
-            if (game.gb.is_promotion)
-                draw_promotion_options(&tex, game.gb.board.state.side, game.sections[SECTION_BOARD]);
-            draw_moves_list(game.sections[SECTION_MOVES_LIST]);
-            draw_info(game.sections[SECTION_INFO]);
+            draw_board_section(&gui, &gb, piece_tex, bold_font);
+            DrawRectangleLinesEx(board_boundary, 1.f, LIME);
+
+            draw_engine_section(primary_font, engine_boundary);
+            DrawRectangleLinesEx(engine_boundary, 1.f, SKYBLUE);
         }
         EndDrawing();
     }
 
     // De-initialization
-    fclose(game.fptr);
-    for (int i = 0; i < 2; i++) UnloadFont(game.font[i]);
-    UnloadTexture(tex);
+    UnloadFont(primary_font);
+    UnloadFont(bold_font);
+    UnloadTexture(piece_tex);
     CloseWindow();
 
     return 0;
 }
+

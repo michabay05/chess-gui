@@ -89,6 +89,7 @@ static void token_append(PGN_TokenList* tl, char* lexeme, PGN_TokenKind kind)
     list_append(tl, t);
 }
 
+#if 0
 static void token_print(PGN_Token t)
 {
     const char* kind_str;
@@ -111,17 +112,19 @@ static void token_print(PGN_Token t)
     }
     printf("[TOKEN: %7s] %s\n", kind_str, t.lexeme);
 }
+#endif
+
+/* ================== UTIL FUNCTIONS ================ */
+bool is_period(char c) { return c == '.'; }
+
+bool is_not_quote(char c) { return c != '"'; }
+bool is_not_space(char c) { return !isspace(c); }
+bool is_not_right_curly(char c) { return c != '}'; }
+bool is_not_period(char c) { return c != '.'; }
+/* ================================================== */
 
 static void parse_lines(char* text, PGN_TokenList* tl)
 {
-
-    bool is_period(char c) { return c == '.'; }
-
-    bool is_not_quote(char c) { return c != '"'; }
-    bool is_not_space(char c) { return !isspace(c); }
-    bool is_not_right_curly(char c) { return c != '}'; }
-    bool is_not_period(char c) { return c != '.'; }
-
     if (text == NULL) return;
     const size_t size = strlen(text);
     

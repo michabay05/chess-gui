@@ -26,8 +26,8 @@ char consume(char* buf, size_t size, size_t* ind)
 void update_dyn_string(char** dest, const char* src, size_t n) 
 {
     *dest = (char*) realloc(*dest, (n + 1) * sizeof(char));
-    memset(*dest, 0, n + 1);
     if (*dest == NULL) return;
+    memset(*dest, 0, n + 1);
     strncpy(*dest, src, n);
 }
 
@@ -38,7 +38,8 @@ void consume_while(char** dest, char* src, size_t size, size_t* i, bool (*filter
         consume(src, size, i);
         word_len++;
     }
-    if (dest != NULL)
+    if (dest != NULL) {
         update_dyn_string(dest, src + prev_ind, word_len);
+    }
 }
 

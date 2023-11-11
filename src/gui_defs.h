@@ -4,6 +4,7 @@
 #include "defs.h"
 #include "move_gen.h"
 #include "raylib.h"
+#include "comm.h"
 
 #include <stdlib.h>  // For realloc(), file writing
 
@@ -20,6 +21,14 @@
 #define PREVIEW_COLOR (Color) { 119, 139, 189, 200 }
 // clang-format on
 
+typedef enum
+{
+    GS_ONGOING = 1,
+    GS_CHECKMATE,
+    GS_DRAW_STALEMATE,
+    GS_DRAW_INSUFF_MAT,
+} GameState;
+
 typedef struct
 {
     Board board;
@@ -29,36 +38,21 @@ typedef struct
     Sq selected;
     Sq target;
     uint64_t preview;
+    GameState state;
 } GUI_Board;
-
-typedef enum
-{
-    SECTION_EVAL_BAR,
-    SECTION_BOARD,
-    SECTION_MOVES_LIST,
-    SECTION_INFO
-} SectionType;
-
-typedef enum
-{
-    GS_NORMAL,
-    GS_CHECKMATE,
-    GS_STALEMATE,
-} GameState;
 
 typedef struct
 {
-    Rectangle sections[4];
-    Font font[3];
-    GameState state;
-    GUI_Board gb;
+    Rectangle eval_boundary;
+    Rectangle board_boundary;
 
-    FILE* fptr;
-} Game;
+    float eval;
+    bool eval_enabled;
+} GUI;
 
 // gui_main.c
 int gui_main(void);
 
 // gui_board.c
-void gui_board_init(GUI_Board *gb);
+void gui_board_init(GUI_Board *gb, const char* fen_str);
 void gui_board_update(GUI_Board *gb, FILE* record_fptr, Rectangle sec);

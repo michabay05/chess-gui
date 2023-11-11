@@ -1,6 +1,6 @@
 #include "fen.h"
 
-FENInfo parse_fen(char *fen) {
+FENInfo parse_fen(const char *fen) {
   FENInfo info = {0};
   // Piece placements
   int ind = 0;
